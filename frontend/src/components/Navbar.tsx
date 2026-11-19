@@ -85,18 +85,24 @@ export const Navbar: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Link
                 to="/login"
-                className="text-sm font-semibold text-text-secondary hover:text-navy-900 px-3 py-2 rounded-lg transition-colors"
+                className="text-xs font-semibold text-text-secondary hover:text-navy-900 px-2.5 py-1.5 rounded-lg transition-colors"
               >
                 Sign In
               </Link>
               <Link
-                to="/plan"
-                className="bg-primary text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-sm hover:bg-primary-600 transition-all"
+                to="/register"
+                className="text-xs font-semibold text-primary hover:bg-primary/10 px-2.5 py-1.5 rounded-lg transition-colors"
               >
-                Plan My Trip
+                Sign Up
+              </Link>
+              <Link
+                to="/plan"
+                className="bg-primary text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl shadow-sm hover:bg-primary-600 transition-all"
+              >
+                Plan Trip
               </Link>
             </div>
           )}

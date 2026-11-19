@@ -15,26 +15,52 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>({
-    id: 'user_demo_123',
-    name: 'Dr. Anusha Chhabra',
-    email: 'demo@travora.ai',
-    saved_trips_count: 3
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('travora_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
   });
-  const [token, setToken] = useState<string | null>(localStorage.getItem('travora_token') || 'demo_token');
-  const [loading, setLoading] = useState<boolean>(false);
+
+  const [token, setToken] = useState<string | null>(() => {
+    const t = localStorage.getItem('travora_token');
+    return t && t !== 'demo_token' ? t : null;
+  });
+
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchUser = async () => {
       const storedToken = localStorage.getItem('travora_token');
+      // Clean up legacy demo token if present
+      if (storedToken === 'demo_token') {
+        localStorage.removeItem('travora_token');
+        localStorage.removeItem('travora_user');
+        setUser(null);
+        setToken(null);
+        setLoading(false);
+        return;
+      }
+
       if (storedToken) {
         try {
           const profile = await authAPI.me();
           setUser(profile);
+          localStorage.setItem('travora_user', JSON.stringify(profile));
+          setToken(storedToken);
         } catch (e) {
-          console.warn('Using demo user fallback');
+          localStorage.removeItem('travora_token');
+          localStorage.removeItem('travora_user');
+          setUser(null);
+          setToken(null);
         }
+      } else {
+        setUser(null);
+        setToken(null);
       }
+      setLoading(false);
     };
     fetchUser();
   }, []);
@@ -44,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const data = await authAPI.login({ email, password: pass });
       localStorage.setItem('travora_token', data.access_token);
+      localStorage.setItem('travora_user', JSON.stringify(data.user));
       setToken(data.access_token);
       setUser(data.user);
     } finally {
@@ -56,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const data = await authAPI.register({ name, email, password: pass });
       localStorage.setItem('travora_token', data.access_token);
+      localStorage.setItem('travora_user', JSON.stringify(data.user));
       setToken(data.access_token);
       setUser(data.user);
     } finally {
@@ -65,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('travora_token');
+    localStorage.removeItem('travora_user');
     setToken(null);
     setUser(null);
   };
@@ -87,4 +116,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-

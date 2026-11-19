@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, Mail, Lock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Compass, Mail, Lock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
-  const [email, setEmail] = useState('demo@travora.ai');
-  const [password, setPassword] = useState('Travora2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +18,7 @@ export const Login: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Authentication failed. Please verify credentials.');
+      setError(err?.response?.data?.detail || 'Sign in failed. Please check your email and password.');
     }
   };
 
@@ -35,19 +35,33 @@ export const Login: React.FC = () => {
               <span className="font-display font-extrabold text-2xl text-white">TRAVORA</span>
             </Link>
             <h2 className="text-2xl font-bold font-display leading-tight mb-3">
-              Intelligent Itinerary Generator
+              Your Personalized Travel Workspace
             </h2>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Sign in to manage your saved travel itineraries, plan group trips, and simulate budget scenarios.
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Sign in to access your saved itineraries, budget what-if scenarios, and customized travel schedules.
             </p>
+
+            <div className="mt-8 space-y-3 text-xs text-gray-300">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-teal" />
+                <span>Save and manage multi-day trips across Indian destinations</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-teal" />
+                <span>Interactive street map waypoints and dining recommendations</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-teal" />
+                <span>Dynamic budget recalculations with instant reallocation</span>
+              </div>
+            </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-navy-800/80 border border-navy-700/80 text-xs text-gray-300 space-y-1.5 mt-8">
-            <div className="text-teal font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" /> Demo Credentials Preloaded
-            </div>
-            <div>Email: <code className="text-white">demo@travora.ai</code></div>
-            <div>Password: <code className="text-white">Travora2026!</code></div>
+          <div className="text-[11px] text-gray-400 mt-8 pt-4 border-t border-navy-800">
+            Need an account?{' '}
+            <Link to="/register" className="text-teal font-semibold hover:underline">
+              Sign up in 30 seconds
+            </Link>
           </div>
         </div>
 
@@ -56,7 +70,7 @@ export const Login: React.FC = () => {
           <div className="mb-6">
             <h3 className="text-2xl font-bold font-display text-navy-900">Sign In</h3>
             <p className="text-xs text-text-secondary mt-1">
-              Enter your email and password to access your dashboard.
+              Enter your email and password to access your account.
             </p>
           </div>
 
@@ -103,12 +117,12 @@ export const Login: React.FC = () => {
             </div>
 
             <Button type="submit" loading={loading} className="w-full mt-2">
-              Sign In to Account
+              Sign In
             </Button>
           </form>
 
           <div className="mt-6 text-center text-xs text-text-secondary">
-            Don't have an account?{' '}
+            Don't have an account yet?{' '}
             <Link to="/register" className="font-semibold text-primary hover:underline">
               Create an account
             </Link>
@@ -118,4 +132,3 @@ export const Login: React.FC = () => {
     </div>
   );
 };
-

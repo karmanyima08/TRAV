@@ -76,18 +76,47 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Guest Mode Banner if not signed in */}
+      {!user && (
+        <div className="bg-gradient-to-r from-teal-50 to-primary/10 border border-teal-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="font-bold text-navy-900 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal animate-pulse" />
+              Save Itineraries to Your Personal Account
+            </div>
+            <p className="text-xs text-text-secondary">
+              Sign up or log in to automatically sync your trips across sessions, keep your customized schedules, and track budgets.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/login">
+              <Button size="sm" variant="ghost" className="border border-teal text-teal hover:bg-teal-50">
+                Sign In
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button size="sm" className="bg-primary hover:bg-primary-600">
+                Create Account
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Welcome & Stats Banner */}
       <div className="bg-gradient-to-r from-navy-900 to-navy-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 text-xs font-semibold text-teal mb-3 border border-navy-700">
             <Compass className="w-3.5 h-3.5" />
-            <span>Travel Workspace</span>
+            <span>{user ? 'Account Workspace' : 'Guest Workspace'}</span>
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-white">
-            Welcome back, {user?.name || 'Traveler'}
+            {user ? `Welcome back, ${user.name}` : 'Welcome, Traveler'}
           </h1>
           <p className="text-xs text-gray-300 mt-1 max-w-xl">
-            Review your saved itineraries, plan new adventures, or customize your group travel plans.
+            {user
+              ? `Account: ${user.email} • Review your saved itineraries, plan new adventures, or customize your travel schedules.`
+              : 'Review your planned trips below, or create an account to save your itineraries permanently.'}
           </p>
         </div>
 
