@@ -1,0 +1,40 @@
+# Launcher & Script Files (Start/Stop launchers)
+*.bat
+*.cmd
+*.ps1
+start.bat
+stop.bat
+START_TRAVORA.bat
+STOP_TRAVORA.bat
+
+# Dependencies & Build Outputs
+node_modules/
+dist/
+build/
+.vite/
+*.egg-info/
+
+# Python cache & test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.local
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
