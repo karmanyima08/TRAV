@@ -18,64 +18,10 @@ import {
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { DESTINATIONS_DATA } from '../data/destinations';
 
 export const Landing: React.FC = () => {
-  const featuredDestinations = [
-    {
-      id: 'jaipur',
-      name: 'Jaipur',
-      state: 'Rajasthan',
-      tagline: 'Palaces, hill forts, and royal heritage',
-      cost: '₹2,000 / day',
-      color: 'from-amber-500/20 to-rose-500/20',
-      badge: 'Trending Heritage'
-    },
-    {
-      id: 'goa',
-      name: 'Goa',
-      state: 'Goa Coast',
-      tagline: 'Sun-drenched beaches & Portuguese architecture',
-      cost: '₹2,500 / day',
-      color: 'from-cyan-500/20 to-teal/20',
-      badge: 'Coastal Getaway'
-    },
-    {
-      id: 'delhi',
-      name: 'Delhi NCR',
-      state: 'Capital Region',
-      tagline: 'Mughal monuments, world cuisine & metro',
-      cost: '₹2,200 / day',
-      color: 'from-blue-500/20 to-indigo-500/20',
-      badge: 'Urban Culture'
-    },
-    {
-      id: 'agra',
-      name: 'Agra',
-      state: 'Uttar Pradesh',
-      tagline: 'Home to the Taj Mahal & Mughal wonders',
-      cost: '₹1,800 / day',
-      color: 'from-rose-500/20 to-purple-500/20',
-      badge: 'World Wonder'
-    },
-    {
-      id: 'varanasi',
-      name: 'Varanasi',
-      state: 'Uttar Pradesh',
-      tagline: 'Spiritual Ganga ghats & ancient sacred temples',
-      cost: '₹1,500 / day',
-      color: 'from-orange-500/20 to-amber-500/20',
-      badge: 'Spiritual Soul'
-    },
-    {
-      id: 'udaipur',
-      name: 'Udaipur',
-      state: 'Rajasthan',
-      tagline: 'City of Lakes and marble island palaces',
-      cost: '₹2,200 / day',
-      color: 'from-teal/20 to-emerald-500/20',
-      badge: 'Romantic Lakes'
-    }
-  ];
+  const featuredDestinations = DESTINATIONS_DATA.slice(0, 6);
 
   return (
     <div className="space-y-24 pb-20">
@@ -298,26 +244,52 @@ export const Landing: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredDestinations.map((dest) => (
-            <Card key={dest.id} hover className="overflow-hidden p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <Badge variant="neutral" size="sm">{dest.badge}</Badge>
-                  <span className="text-xs font-semibold text-teal font-mono">{dest.cost}</span>
+            <div
+              key={dest.id}
+              className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
+            >
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={dest.image}
+                  alt={dest.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                <div className="absolute top-3 inset-x-3 flex items-center justify-between z-10">
+                  <span className="px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20">
+                    {dest.state}
+                  </span>
+                  <span className="text-xs font-semibold text-teal-300 font-mono bg-teal-950/80 px-2 py-0.5 rounded-md border border-teal-500/30">
+                    {dest.avgCost}
+                  </span>
                 </div>
-                <h3 className="text-xl font-bold text-navy-900 mb-1">{dest.name}</h3>
-                <p className="text-xs text-primary font-medium mb-3">{dest.state}</p>
-                <p className="text-xs text-text-secondary leading-relaxed mb-4">{dest.tagline}</p>
+                <div className="absolute bottom-3 inset-x-3 z-10 text-white">
+                  <h3 className="text-xl font-bold font-display drop-shadow">{dest.name}</h3>
+                  <p className="text-xs text-gray-200 line-clamp-1">{dest.tagline}</p>
+                </div>
               </div>
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                <Link
-                  to={`/plan?dest=${dest.id}`}
-                  className="text-xs font-bold text-primary hover:text-primary-600 flex items-center gap-1"
-                >
-                  Plan This Trip <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-                <span className="text-[11px] text-gray-400">Verified Guide</span>
+
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {dest.highlights.slice(0, 3).map((h, i) => (
+                    <span key={i} className="text-[11px] bg-surface text-navy-900 font-medium px-2 py-0.5 rounded-md border border-gray-100">
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <Link
+                    to={`/plan?dest=${dest.id}`}
+                    className="text-xs font-bold text-primary hover:text-primary-600 flex items-center gap-1.5"
+                  >
+                    <span>Plan Itinerary</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <span className="text-[11px] text-gray-400">{dest.bestSeason}</span>
+                </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </section>

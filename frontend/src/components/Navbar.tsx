@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Sparkles, Sliders, Users, MapPin, LayoutDashboard, LogOut, Calendar } from 'lucide-react';
+import { Compass, Sparkles, Sliders, Users, MapPin, LayoutDashboard, LogOut, Calendar, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
 import { Logo } from './ui/Logo';
@@ -12,6 +12,7 @@ export const Navbar: React.FC = () => {
 
   const navLinks = [
     { label: 'Plan Trip', path: '/plan', icon: Compass },
+    { label: 'Saved Trips', path: '/dashboard#saved-trips', icon: Bookmark },
     ...(currentTrip?.id
       ? [{ label: 'My Itinerary', path: `/itinerary/${currentTrip.id}`, icon: Calendar }]
       : []),

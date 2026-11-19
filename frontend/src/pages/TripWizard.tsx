@@ -13,13 +13,17 @@ import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  Bot
+  Compass,
+  Check,
+  Flame,
+  Search
 } from 'lucide-react';
 import { tripsAPI } from '../services/api';
 import { useTrip } from '../context/TripContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { DESTINATIONS_DATA, getDestinationById } from '../data/destinations';
 
 export const TripWizard: React.FC = () => {
   const navigate = useNavigate();
@@ -34,6 +38,8 @@ export const TripWizard: React.FC = () => {
 
   const [step, setStep] = useState<number>(wizardDraft?.step || 1);
   const [loading, setLoading] = useState<boolean>(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Form State initialized from persistent draft or query params or defaults
   const [destination, setDestination] = useState<string>(
@@ -56,7 +62,7 @@ export const TripWizard: React.FC = () => {
     wizardDraft?.accessibility ?? false
   );
   const [transport, setTransport] = useState<string>(wizardDraft?.transport || 'auto');
-  const [algorithm, setAlgorithm] = useState<string>('astar');
+  const [algorithm] = useState<string>('astar');
 
   // Auto-sync draft to persistent storage whenever form or step changes
   React.useEffect(() => {
@@ -110,16 +116,6 @@ export const TripWizard: React.FC = () => {
     }
   };
 
-  const destinationOptions = [
-    { id: 'jaipur', name: 'Jaipur', state: 'Rajasthan', desc: 'Forts, Palaces, Bazaars' },
-    { id: 'delhi', name: 'Delhi NCR', state: 'Capital', desc: 'Mughal Heritage & Metro' },
-    { id: 'goa', name: 'Goa Coast', state: 'Goa', desc: 'Beaches & Latin Quarter' },
-    { id: 'agra', name: 'Agra', state: 'Uttar Pradesh', desc: 'Taj Mahal & Citadel' },
-    { id: 'varanasi', name: 'Varanasi', state: 'Uttar Pradesh', desc: 'Ghats & Ancient Temples' },
-    { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', desc: 'Marine Drive & Island Caves' },
-    { id: 'udaipur', name: 'Udaipur', state: 'Rajasthan', desc: 'Lake Pichola & Palaces' },
-  ];
-
   const interestOptions = [
     { id: 'historical', label: 'Historical Forts & Palaces' },
     { id: 'cultural', label: 'Art & Heritage Museums' },
@@ -147,11 +143,23 @@ export const TripWizard: React.FC = () => {
     }
   };
 
+  const filteredDestinations = DESTINATIONS_DATA.filter((d) => {
+    const matchesCategory = categoryFilter === 'all' || d.category === categoryFilter;
+    const matchesQuery =
+      searchQuery.trim() === '' ||
+      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.tagline.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
+
+  const selectedDestinationInfo = getDestinationById(destination);
+
   const handleGenerate = async () => {
     setLoading(true);
     try {
       const tripPayload = {
-        title: `Trip to ${destination.toUpperCase()} (${numDays} Days)`,
+        title: `Trip to ${selectedDestinationInfo.name} (${numDays} Days)`,
         destination,
         start_date: startDate,
         num_days: numDays,
@@ -183,97 +191,229 @@ export const TripWizard: React.FC = () => {
     }
   };
 
+  const categories = [
+    { id: 'all', label: 'All Destinations', count: DESTINATIONS_DATA.length },
+    { id: 'heritage', label: 'Royal Heritage', count: DESTINATIONS_DATA.filter((d) => d.category === 'heritage').length },
+    { id: 'beach', label: 'Beaches & Coast', count: DESTINATIONS_DATA.filter((d) => d.category === 'beach').length },
+    { id: 'mountain', label: 'Himalayas & Nature', count: DESTINATIONS_DATA.filter((d) => d.category === 'mountain').length },
+    { id: 'spiritual', label: 'Spiritual & Sacred', count: DESTINATIONS_DATA.filter((d) => d.category === 'spiritual').length },
+    { id: 'urban', label: 'Metropolitan & Culture', count: DESTINATIONS_DATA.filter((d) => d.category === 'urban').length },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Wizard Progress Bar */}
-      <div className="mb-10">
-        <div className="flex items-center justify-between text-xs font-semibold text-text-secondary mb-2">
-          <div className="flex items-center gap-2">
-            <span>Step {step} of 8: {
-              step === 1 ? 'Destination & Dates' :
-              step === 2 ? 'Travel Party' :
-              step === 3 ? 'Budget Allocation' :
-              step === 4 ? 'Activity Interests' :
-              step === 5 ? 'Dining & Dietary' :
-              step === 6 ? 'Walking Stamina' :
-              step === 7 ? 'Transit Mode' : 'Review your trip'
-            }</span>
-            <span className="text-[10px] text-teal bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+      <div className="mb-8">
+        <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-text-secondary mb-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="font-bold text-navy-900">
+              Step {step} of 8: {
+                step === 1 ? 'Choose Destination & Dates' :
+                step === 2 ? 'Travel Party & Style' :
+                step === 3 ? 'Budget Allocation' :
+                step === 4 ? 'Activity Interests' :
+                step === 5 ? 'Dining & Dietary' :
+                step === 6 ? 'Walking Comfort & Accessibility' :
+                step === 7 ? 'Transit Mode' : 'Review Your Personalized Trip'
+              }
+            </span>
+            <span className="text-[11px] text-teal bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
               Draft saved
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={handleStartOver}
-              className="text-[11px] text-text-secondary hover:text-red-500 underline"
+              className="text-xs text-text-secondary hover:text-red-500 underline transition-colors"
             >
               Start over
             </button>
-            <span className="text-primary font-bold">{Math.round((step / 8) * 100)}% Complete</span>
+            <span className="text-primary font-bold text-xs sm:text-sm">{Math.round((step / 8) * 100)}% Complete</span>
           </div>
         </div>
-        <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+        <div className="w-full h-2.5 rounded-full bg-gray-200 overflow-hidden shadow-inner">
           <div
-            className="h-full bg-gradient-to-r from-primary to-teal transition-all duration-300"
+            className="h-full bg-gradient-to-r from-primary via-blue-500 to-teal transition-all duration-300"
             style={{ width: `${(step / 8) * 100}%` }}
           />
         </div>
       </div>
 
-      <Card className="p-6 sm:p-10 shadow-xl border-gray-100">
+      <Card className="p-6 sm:p-10 lg:p-12 shadow-2xl border-gray-100/80 rounded-3xl bg-white/95 backdrop-blur-sm">
         {/* STEP 1: Destination & Dates */}
         {step === 1 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold font-display text-navy-900">Choose Your Destination</h2>
-              <p className="text-xs text-text-secondary mt-1">Select from our popular Indian travel destinations.</p>
+          <div className="space-y-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-100 pb-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Curated Indian Destinations</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-navy-900">
+                  Where would you like to travel?
+                </h2>
+                <p className="text-xs sm:text-sm text-text-secondary mt-1">
+                  Select from 12 iconic destinations across India with authentic photos, verified opening hours, and smart routes.
+                </p>
+              </div>
+
+              {/* Search input */}
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search city, state or theme..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {destinationOptions.map((opt) => (
-                <div
-                  key={opt.id}
-                  onClick={() => setDestination(opt.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                    destination === opt.id
-                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    categoryFilter === cat.id
+                      ? 'bg-navy-900 text-white shadow-md'
+                      : 'bg-surface hover:bg-gray-200/70 text-text-secondary'
                   }`}
                 >
-                  <div className="font-bold text-sm text-navy-900">{opt.name}</div>
-                  <div className="text-xs text-primary font-medium">{opt.state}</div>
-                  <div className="text-[11px] text-gray-500 mt-1">{opt.desc}</div>
-                </div>
+                  {cat.label} ({cat.count})
+                </button>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            {/* Destination Photo Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filteredDestinations.map((opt) => {
+                const isSelected = destination === opt.id;
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => setDestination(opt.id)}
+                    className={`group relative h-72 sm:h-80 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 transform select-none ${
+                      isSelected
+                        ? 'ring-4 ring-teal shadow-2xl scale-[1.02] -translate-y-1'
+                        : 'border border-gray-200 hover:shadow-xl hover:-translate-y-1'
+                    }`}
+                  >
+                    {/* Background Image */}
+                    <img
+                      src={opt.image}
+                      alt={opt.name}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                      loading="lazy"
+                    />
+
+                    {/* Gradient Overlay */}
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-t transition-all duration-300 ${
+                        isSelected
+                          ? 'from-black/95 via-black/50 to-teal/30'
+                          : 'from-black/90 via-black/40 to-black/20 group-hover:via-black/30'
+                      }`}
+                    />
+
+                    {/* Top Chips Row */}
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10">
+                      <span className="px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20">
+                        {opt.state}
+                      </span>
+                      {isSelected ? (
+                        <span className="px-2.5 py-1 rounded-full bg-teal text-white text-[11px] font-bold flex items-center gap-1 shadow-lg animate-fadeIn">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Selected
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-medium border border-white/20">
+                          {opt.bestSeason}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bottom Content Row */}
+                    <div className="absolute bottom-0 inset-x-0 p-4 z-10 text-white space-y-2">
+                      <div>
+                        <div className="text-xl sm:text-2xl font-bold font-display drop-shadow-md">
+                          {opt.name}
+                        </div>
+                        <p className="text-[11px] text-gray-200 line-clamp-1 mt-0.5 drop-shadow">
+                          {opt.tagline}
+                        </p>
+                      </div>
+
+                      {/* Top Highlights Chips */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {opt.highlights.slice(0, 2).map((h, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md text-gray-100"
+                          >
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Daily Budget Badge */}
+                      <div className="pt-2 border-t border-white/15 flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-semibold text-gray-300">Est. Daily</span>
+                        <span className="text-xs font-mono font-bold text-teal-300 bg-teal-950/80 px-2 py-0.5 rounded-md border border-teal-500/30">
+                          {opt.avgCost}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Travel Dates & Duration Controls */}
+            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
-                <label className="block text-xs font-semibold text-navy-900 mb-1.5">Start Date</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-navy-900 mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <span>Start Date of Your Journey</span>
+                </label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-navy-900 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 bg-white"
                 />
+                <span className="text-[11px] text-text-secondary mt-1 block">
+                  Used to verify venue opening schedules and day-of-week closures.
+                </span>
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-navy-900 mb-1.5">
-                  Trip Duration ({numDays} Days)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy-900 flex items-center gap-1.5">
+                    <Compass className="w-4 h-4 text-teal" />
+                    <span>Trip Duration</span>
+                  </label>
+                  <span className="font-extrabold text-sm text-primary px-3 py-1 rounded-full bg-primary/10">
+                    {numDays} {numDays === 1 ? 'Day' : 'Days'}
+                  </span>
+                </div>
                 <input
                   type="range"
                   min="1"
                   max="7"
                   value={numDays}
                   onChange={(e) => setNumDays(parseInt(e.target.value))}
-                  className="w-full accent-primary mt-2"
+                  className="w-full accent-primary h-2 bg-gray-200 rounded-lg cursor-pointer mt-3"
                 />
-                <div className="flex justify-between text-[11px] text-gray-400 mt-1">
-                  <span>1 Day</span>
-                  <span>3 Days</span>
-                  <span>7 Days</span>
+                <div className="flex justify-between text-xs font-mono text-gray-400 mt-2">
+                  <span>1 Day (Express)</span>
+                  <span>3 Days (Standard)</span>
+                  <span>7 Days (Full Explorer)</span>
                 </div>
               </div>
             </div>
@@ -288,45 +428,46 @@ export const TripWizard: React.FC = () => {
               <p className="text-xs text-text-secondary mt-1">Defines preference weighting and accommodation models.</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { id: 'solo', label: 'Solo Traveler', icon: '👤' },
-                { id: 'couple', label: 'Couple', icon: '👥' },
-                { id: 'family', label: 'Family with Kids', icon: '👨‍👩‍👧' },
-                { id: 'group', label: 'Friends Group', icon: '🎉' },
+                { id: 'solo', label: 'Solo Traveler', icon: '👤', desc: 'Independent pace & flexible stops' },
+                { id: 'couple', label: 'Couple', icon: '👥', desc: 'Scenic dining & romantic viewpoints' },
+                { id: 'family', label: 'Family with Kids', icon: '👨‍👩‍👧', desc: 'Comfortable transit & kid-friendly sites' },
+                { id: 'group', label: 'Friends Group', icon: '🎉', desc: 'Action-packed & shared experiences' },
               ].map((t) => (
                 <div
                   key={t.id}
                   onClick={() => setTravelType(t.id)}
-                  className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${
+                  className={`p-5 rounded-2xl border text-center cursor-pointer transition-all ${
                     travelType === t.id
-                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-2xl mb-1">{t.icon}</div>
-                  <div className="text-xs font-bold text-navy-900">{t.label}</div>
+                  <div className="text-3xl mb-2">{t.icon}</div>
+                  <div className="text-sm font-bold text-navy-900">{t.label}</div>
+                  <div className="text-[11px] text-gray-500 mt-1">{t.desc}</div>
                 </div>
               ))}
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-navy-900 mb-2">
-                Number of Travelers: {travelers}
+            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 mt-6">
+              <label className="block text-xs font-bold uppercase tracking-wider text-navy-900 mb-3">
+                Number of Travelers: <span className="text-primary font-mono text-base">{travelers}</span>
               </label>
               <div className="flex items-center gap-4">
                 <button
                   type="button"
                   onClick={() => setTravelers(Math.max(1, travelers - 1))}
-                  className="w-10 h-10 rounded-xl border border-gray-300 text-lg font-bold flex items-center justify-center hover:bg-gray-100"
+                  className="w-12 h-12 rounded-xl border border-gray-300 text-xl font-bold flex items-center justify-center hover:bg-gray-100 transition-colors"
                 >
                   -
                 </button>
-                <span className="text-lg font-bold text-navy-900 font-mono w-6 text-center">{travelers}</span>
+                <span className="text-2xl font-black text-navy-900 font-mono w-12 text-center">{travelers}</span>
                 <button
                   type="button"
                   onClick={() => setTravelers(Math.min(10, travelers + 1))}
-                  className="w-10 h-10 rounded-xl border border-gray-300 text-lg font-bold flex items-center justify-center hover:bg-gray-100"
+                  className="w-12 h-12 rounded-xl border border-gray-300 text-xl font-bold flex items-center justify-center hover:bg-gray-100 transition-colors"
                 >
                   +
                 </button>
@@ -345,12 +486,12 @@ export const TripWizard: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 text-center space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-teal">Estimated Budget</span>
-              <div className="text-4xl font-black font-display text-navy-900">
+            <div className="p-8 rounded-3xl bg-gradient-to-br from-surface to-teal-50/40 border border-teal-200/80 text-center space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-teal">Estimated Total Spending Limit</span>
+              <div className="text-5xl font-black font-display text-navy-900">
                 ₹{budget.toLocaleString('en-IN')}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-gray-600 font-medium">
                 ~₹{Math.round(budget / numDays).toLocaleString('en-IN')} per day for {numDays} days
               </p>
             </div>
@@ -362,31 +503,31 @@ export const TripWizard: React.FC = () => {
               step="1000"
               value={budget}
               onChange={(e) => setBudget(parseInt(e.target.value))}
-              className="w-full accent-primary"
+              className="w-full accent-primary h-2 bg-gray-200 rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-xs text-gray-400 font-mono">
               <span>₹5,000 (Shoestring)</span>
-              <span>₹20,000 (Standard)</span>
+              <span>₹20,000 (Comfortable)</span>
               <span>₹80,000 (Luxury)</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
               {[
-                { id: 'budget', label: 'Budget Traveler', sub: 'Hostels & street eats' },
-                { id: 'mid', label: 'Comfort / Mid-Range', sub: '3-star hotels & cabs' },
-                { id: 'luxury', label: 'Luxury Experience', sub: 'Palace stays & private tours' },
+                { id: 'budget', label: 'Budget Traveler', sub: 'Homestays, public transit & authentic local eats' },
+                { id: 'mid', label: 'Comfort / Mid-Range', sub: '3-star hotels, AC cabs & popular heritage dining' },
+                { id: 'luxury', label: 'Luxury Experience', sub: 'Heritage palace stays, fine dining & private car' },
               ].map((tier) => (
                 <div
                   key={tier.id}
                   onClick={() => setBudgetCategory(tier.id)}
-                  className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
+                  className={`p-5 rounded-2xl border text-center cursor-pointer transition-all ${
                     budgetCategory === tier.id
-                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
+                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20 shadow-md'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="text-xs font-bold text-navy-900">{tier.label}</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">{tier.sub}</div>
+                  <div className="text-sm font-bold text-navy-900">{tier.label}</div>
+                  <div className="text-xs text-gray-500 mt-1">{tier.sub}</div>
                 </div>
               ))}
             </div>
@@ -403,20 +544,26 @@ export const TripWizard: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {interestOptions.map((inter) => {
                 const active = interests.includes(inter.id);
                 return (
                   <div
                     key={inter.id}
                     onClick={() => toggleInterest(inter.id)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between h-28 ${
                       active
-                        ? 'border-primary bg-primary text-white shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 bg-white text-navy-900'
+                        ? 'border-primary bg-primary text-white shadow-md scale-[1.02]'
+                        : 'border-gray-200 hover:border-gray-300 bg-white text-navy-900 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="text-xs font-bold leading-snug">{inter.label}</div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold leading-snug">{inter.label}</span>
+                      {active && <Check className="w-4 h-4 text-white shrink-0" />}
+                    </div>
+                    <span className={`text-[10px] ${active ? 'text-white/80' : 'text-gray-400'}`}>
+                      {active ? 'Selected' : 'Tap to add'}
+                    </span>
                   </div>
                 );
               })}
@@ -434,25 +581,29 @@ export const TripWizard: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { id: 'veg', label: 'Vegetarian Only' },
-                { id: 'jain', label: 'Jain (Root-Free)' },
-                { id: 'vegan', label: 'Plant-Based Vegan' },
-                { id: 'halal', label: 'Halal Certified' },
+                { id: 'veg', label: 'Vegetarian Only', desc: 'No meat, fish or poultry' },
+                { id: 'jain', label: 'Jain (Root-Free)', desc: 'Strict vegetarian without root veggies' },
+                { id: 'vegan', label: 'Plant-Based Vegan', desc: '100% dairy-free plant foods' },
+                { id: 'halal', label: 'Halal Certified', desc: 'Compliant culinary venues' },
               ].map((d) => {
                 const active = dietary.includes(d.id);
                 return (
                   <div
                     key={d.id}
                     onClick={() => toggleDietary(d.id)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                       active
-                        ? 'border-teal bg-teal text-white shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 bg-white text-navy-900'
+                        ? 'border-teal bg-teal text-white shadow-md scale-[1.02]'
+                        : 'border-gray-200 hover:border-gray-300 bg-white text-navy-900 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="text-xs font-bold leading-snug">{d.label}</div>
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-sm font-bold">{d.label}</div>
+                      {active && <Check className="w-4 h-4 text-white shrink-0" />}
+                    </div>
+                    <div className={`text-xs ${active ? 'text-white/80' : 'text-gray-500'}`}>{d.desc}</div>
                   </div>
                 );
               })}
@@ -470,7 +621,7 @@ export const TripWizard: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { id: 'easy', label: 'Gentle Pacing', desc: 'Under 2 km/day, elevator friendly, minimal stairs' },
                 { id: 'moderate', label: 'Moderate Explorer', desc: '2 - 5 km/day, palace courtyards & garden strolls' },
@@ -479,29 +630,29 @@ export const TripWizard: React.FC = () => {
                 <div
                   key={w.id}
                   onClick={() => setWalkingComfort(w.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-6 rounded-2xl border cursor-pointer transition-all ${
                     walkingComfort === w.id
-                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
+                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20 shadow-md'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="text-sm font-bold text-navy-900 mb-1">{w.label}</div>
+                  <div className="text-base font-bold text-navy-900 mb-1">{w.label}</div>
                   <div className="text-xs text-gray-500 leading-relaxed">{w.desc}</div>
                 </div>
               ))}
             </div>
 
             <div className="pt-2">
-              <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
+              <label className="flex items-center gap-3 p-5 rounded-2xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
                 <input
                   type="checkbox"
                   checked={accessibility}
                   onChange={(e) => setAccessibility(e.target.checked)}
-                  className="w-4 h-4 rounded text-primary focus:ring-primary"
+                  className="w-5 h-5 rounded text-primary focus:ring-primary"
                 />
                 <div>
-                  <div className="text-xs font-bold text-navy-900">Require Wheelchair Accessibility</div>
-                  <div className="text-[11px] text-gray-500">Only selects attractions with verified ramps or step-free access.</div>
+                  <div className="text-sm font-bold text-navy-900">Require Wheelchair Accessibility</div>
+                  <div className="text-xs text-gray-500">Only selects attractions with verified ramps or step-free access.</div>
                 </div>
               </label>
             </div>
@@ -518,24 +669,24 @@ export const TripWizard: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { id: 'auto', label: 'Auto Rickshaw', desc: '~25 km/h, authentic local' },
-                { id: 'taxi', label: 'AC Cab / Taxi', desc: '~30 km/h, comfortable' },
-                { id: 'metro', label: 'City Metro', desc: '~35 km/h, rapid transit' },
-                { id: 'walk', label: 'Walking / Foot', desc: '~5 km/h, dense old city' },
+                { id: 'auto', label: 'Auto Rickshaw', desc: '~25 km/h, authentic local feeling' },
+                { id: 'taxi', label: 'AC Cab / Taxi', desc: '~30 km/h, air-conditioned comfort' },
+                { id: 'metro', label: 'City Metro', desc: '~35 km/h, rapid rapid transit' },
+                { id: 'walk', label: 'Walking / Foot', desc: '~5 km/h, dense historic alleys' },
               ].map((t) => (
                 <div
                   key={t.id}
                   onClick={() => setTransport(t.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-5 rounded-2xl border cursor-pointer transition-all ${
                     transport === t.id
-                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
+                      ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20 shadow-md'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="text-xs font-bold text-navy-900 mb-1">{t.label}</div>
-                  <div className="text-[11px] text-gray-500">{t.desc}</div>
+                  <div className="text-sm font-bold text-navy-900 mb-1">{t.label}</div>
+                  <div className="text-xs text-gray-500">{t.desc}</div>
                 </div>
               ))}
             </div>
@@ -544,49 +695,93 @@ export const TripWizard: React.FC = () => {
 
         {/* STEP 8: Review your trip */}
         {step === 8 && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-bold font-display text-navy-900">Review your trip</h2>
-              <p className="text-xs text-text-secondary mt-1">
+              <h2 className="text-2xl sm:text-3xl font-bold font-display text-navy-900">Review your trip</h2>
+              <p className="text-xs sm:text-sm text-text-secondary mt-1">
                 Everything looks ready! Review your trip summary below before we create your itinerary.
               </p>
             </div>
 
-            {/* Summary Card */}
-            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Destination</span>
-                  <span className="font-bold text-navy-900 capitalize text-sm">{destination}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Duration</span>
-                  <span className="font-bold text-navy-900 text-sm">{numDays} Days</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Budget</span>
-                  <span className="font-bold text-teal text-sm">₹{budget.toLocaleString('en-IN')}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Stamina</span>
-                  <span className="font-bold text-navy-900 capitalize text-sm">{walkingComfort}</span>
-                </div>
+            {/* Destination Photo Hero Banner in Review */}
+            <div className="relative rounded-3xl overflow-hidden shadow-xl border border-gray-200">
+              <img
+                src={selectedDestinationInfo.image}
+                alt={selectedDestinationInfo.name}
+                className="w-full h-56 sm:h-64 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 text-white">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md w-fit border border-white/20 mb-1">
+                  {selectedDestinationInfo.state}
+                </span>
+                <h3 className="text-2xl sm:text-4xl font-extrabold font-display">
+                  {selectedDestinationInfo.name}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-200 mt-1 max-w-xl">
+                  {selectedDestinationInfo.tagline}
+                </p>
               </div>
+            </div>
 
-              <div className="pt-4 border-t border-gray-200/60">
-                <span className="text-gray-400 block text-[10px] uppercase font-semibold mb-2">Interests</span>
+            {/* Summary Highlights Matrix */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-surface border border-gray-200/80">
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Duration</span>
+                <span className="font-extrabold text-navy-900 text-lg">{numDays} Days</span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">Starts {startDate}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-surface border border-gray-200/80">
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Planned Budget</span>
+                <span className="font-extrabold text-teal text-lg">₹{budget.toLocaleString('en-IN')}</span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">~₹{Math.round(budget/numDays)}/day</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-surface border border-gray-200/80">
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Party Size</span>
+                <span className="font-extrabold text-navy-900 text-lg capitalize">{travelType}</span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">{travelers} Traveler(s)</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-surface border border-gray-200/80">
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Daily Pace</span>
+                <span className="font-extrabold text-navy-900 text-lg capitalize">{walkingComfort}</span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">{transport} transit</span>
+              </div>
+            </div>
+
+            {/* Chosen Interests & Diet */}
+            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 space-y-4">
+              <div>
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-2">Selected Interests</span>
                 <div className="flex flex-wrap gap-2">
                   {interests.map((intId) => {
                     const opt = interestOptions.find((o) => o.id === intId);
                     return (
                       <span
                         key={intId}
-                        className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
+                        className="px-3.5 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold"
                       >
                         {opt ? opt.label : intId}
                       </span>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-200/60">
+                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-2">Dietary Preferences</span>
+                <div className="flex flex-wrap gap-2">
+                  {dietary.map((d) => (
+                    <span
+                      key={d}
+                      className="px-3.5 py-1.5 rounded-full bg-teal/10 text-teal text-xs font-bold uppercase"
+                    >
+                      {d}
+                    </span>
+                  ))}
+                  {accessibility && (
+                    <span className="px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                      Wheelchair Accessible Only
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -611,15 +806,18 @@ export const TripWizard: React.FC = () => {
             <Button
               onClick={() => setStep(step + 1)}
               icon={<ArrowRight className="w-4 h-4" />}
+              size="lg"
+              className="bg-primary hover:bg-primary-600 px-8"
             >
-              Continue
+              Continue to Step {step + 1}
             </Button>
           ) : (
             <Button
               onClick={handleGenerate}
               loading={loading}
-              icon={<Sparkles className="w-4 h-4" />}
-              className="bg-gradient-to-r from-primary to-teal text-white shadow-lg"
+              icon={<Sparkles className="w-5 h-5" />}
+              size="lg"
+              className="bg-gradient-to-r from-primary via-blue-600 to-teal text-white shadow-xl hover:shadow-2xl px-10 py-3 text-base font-bold"
             >
               Generate my itinerary
             </Button>
@@ -629,4 +827,3 @@ export const TripWizard: React.FC = () => {
     </div>
   );
 };
-

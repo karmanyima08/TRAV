@@ -25,6 +25,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { InteractiveRouteMap } from '../components/InteractiveRouteMap';
+import { getDestinationById } from '../data/destinations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const formatWhyPicked = (explanation?: string, category?: string) => {
@@ -140,50 +141,85 @@ export const ItineraryPage: React.FC = () => {
     }
   };
 
+  const destInfo = getDestinationById(itinerary.destination?.id || itinerary.destination?.name || 'jaipur');
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Banner / Trip Overview */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-card flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="teal" size="sm">
-              Personalized Plan
-            </Badge>
+      <div className="relative rounded-3xl overflow-hidden shadow-xl border border-gray-100 bg-white">
+        <div className="relative h-48 sm:h-56 w-full overflow-hidden">
+          <img
+            src={destInfo.image}
+            alt={destInfo.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 sm:p-8 text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-teal text-white text-[11px] font-bold shadow-sm">
+                Personalized Plan
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20">
+                {destInfo.state}
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-white drop-shadow">
+              {itinerary.destination?.name || destInfo.name} Itinerary
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-200 mt-1 flex items-center gap-4">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-teal" />
+                {itinerary.days.length} Days Planned
+              </span>
+              <span>•</span>
+              <span className="text-gray-300">{destInfo.tagline}</span>
+            </p>
           </div>
-          <h1 className="text-3xl font-bold font-display text-navy-900 tracking-tight">
-            {itinerary.destination?.name || 'Jaipur'} Travel Itinerary
-          </h1>
-          <p className="text-xs text-text-secondary mt-1 flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              {itinerary.days.length} Days Planned
-            </span>
-            <span className="flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5 text-gray-400" />
-              {itinerary.destination?.state}
-            </span>
-          </p>
         </div>
 
-        {/* Budget Utilization Meter */}
-        <div className="w-full md:w-80 p-4 rounded-2xl bg-surface border border-gray-200/80 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500 font-medium">Estimated Total Cost</span>
-            <span className="font-extrabold text-navy-900 text-sm font-mono">
-              ₹{itinerary.total_estimated_expenditure.toLocaleString('en-IN')}
-            </span>
+        {/* Bar beneath image */}
+        <div className="p-5 sm:p-6 bg-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-6 text-xs text-text-secondary">
+            <div>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Planned Total</span>
+              <span className="font-extrabold text-navy-900 text-base font-mono">
+                ₹{itinerary.total_estimated_expenditure.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-gray-200" />
+            <div>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Transit Mode</span>
+              <span className="font-bold text-navy-900 capitalize text-sm">
+                {itinerary.trip_params?.transport_preference || 'Auto Rickshaw'}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-gray-200" />
+            <div>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Pacing</span>
+              <span className="font-bold text-navy-900 capitalize text-sm">
+                {itinerary.trip_params?.walking_comfort || 'Moderate'}
+              </span>
+            </div>
           </div>
-          <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
-            <div
-              className={`h-full ${
-                itinerary.budget_utilization_percentage > 90 ? 'bg-amber-500' : 'bg-teal'
-              }`}
-              style={{ width: `${Math.min(100, itinerary.budget_utilization_percentage)}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-gray-400">
-            <span>Budget: ₹{Number(itinerary.trip_params?.budget || 20000).toLocaleString('en-IN')}</span>
-            <span className="font-bold text-teal">{itinerary.budget_utilization_percentage}% utilized</span>
+
+          <div className="w-full md:w-80 p-3.5 rounded-2xl bg-surface border border-gray-200/80 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500 font-medium">Budget Utilization</span>
+              <span className="font-bold font-mono text-teal">
+                {Math.round(itinerary.budget_utilization_percentage)}% utilized
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+              <div
+                className={`h-full ${
+                  itinerary.budget_utilization_percentage > 90 ? 'bg-amber-500' : 'bg-teal'
+                }`}
+                style={{ width: `${Math.min(100, itinerary.budget_utilization_percentage)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
+              <span>Limit: ₹{Number(itinerary.trip_params?.budget || 20000).toLocaleString('en-IN')}</span>
+              <span>Available: ₹{Math.max(0, Number(itinerary.trip_params?.budget || 20000) - itinerary.total_estimated_expenditure).toLocaleString('en-IN')}</span>
+            </div>
           </div>
         </div>
       </div>
