@@ -1,9 +1,32 @@
 """
 State Space Search — Travel State, Action, and Problem definitions.
+Defines state representations, actions, deterministic transitions, non-negative
+step cost formulations, and admissible & consistent heuristics for travel planning.
 """
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 import math
+
+# ==============================================================================
+# Non-Negative Objective Weights for Step Cost Computation
+# c(step) = W_FEE * entry_fee + W_TRANSIT * transit_minutes + W_PREF * (1 - pref_norm)
+#
+# Weight Scaling Rationale:
+# 1. Entry fees in tourist destinations typically range from 0 to 500 INR (avg ~200 INR).
+#    With W_FEE = 0.05, an entry fee of 200 INR contributes: 0.05 * 200 = 10.0.
+# 2. Transit time between attractions typically ranges from 10 to 40 minutes (avg ~20 min).
+#    With W_TRANSIT = 0.5, a 20-minute transit contributes: 0.5 * 20 = 10.0.
+# 3. Normalized preference satisfaction (pref_norm) is strictly in [0, 1].
+#    Thus (1 - pref_norm) is in [0, 1] (avg ~0.5 for moderate preference match).
+#    With W_PREF = 20.0, a 0.5 preference penalty contributes: 20.0 * 0.5 = 10.0.
+#
+# All weights are >= 0. The three terms are comparable on an order-of-magnitude basis
+# (~10 units each on average), balancing monetary expense, transit fatigue, and preference
+# alignment without any single term dominating or producing negative step costs.
+# ==============================================================================
+W_FEE: float = 0.05
+W_TRANSIT: float = 0.5
+W_PREF: float = 20.0
 
 
 @dataclass
@@ -147,21 +170,37 @@ class TravelProblem:
         self.start_time = start_time
         self.transport_mode = preferences.get("transport_preference", "auto")
 
-        # Pre-score attractions
+        # Pre-score attractions and normalize to [0, 1]
         self.preference_scores: Dict[str, float] = {}
+        self.normalized_preference_scores: Dict[str, float] = {}
         self._precompute_scores()
 
     def _precompute_scores(self):
+        """
+        Compute candidate attraction preference scores and normalize to [0, 1]
+        by dividing by the maximum score observed in the candidate set.
+        """
         interests = set(self.preferences.get("interests", []))
         budget_cat = self.preferences.get("budget_category", "mid")
+        raw_scores: Dict[str, float] = {}
+
         for a in self.attractions:
-            score = a.get("popularity_score", 0.5)
+            score = float(a.get("popularity_score", 0.5))
             tags = set(a.get("tags", []) + [a.get("category", "")])
             if interests & tags:
                 score += 0.3
             if a.get("budget_category") == budget_cat:
                 score += 0.1
-            self.preference_scores[a["id"]] = min(1.0, score)
+            raw_scores[a["id"]] = score
+
+        max_score = max(raw_scores.values()) if raw_scores else 1.0
+        if max_score <= 0.0:
+            max_score = 1.0
+
+        for aid, raw in raw_scores.items():
+            norm = min(1.0, max(0.0, raw / max_score))
+            self.preference_scores[aid] = norm
+            self.normalized_preference_scores[aid] = norm
 
     def get_initial_state(self) -> TravelState:
         return TravelState(
@@ -345,6 +384,28 @@ class TravelProblem:
             return False
         return True
 
+    def step_cost(
+        self,
+        state: TravelState,
+        action: TravelAction,
+        next_state: TravelState,
+    ) -> float:
+        """
+        Compute non-negative step cost c(step):
+        c(step) = W_FEE * entry_fee + W_TRANSIT * transit_minutes + W_PREF * (1 - pref_norm)
+
+        Every weight is >= 0 and pref_norm is in [0, 1], guaranteeing all step costs >= 0.
+        ADVANCE_DAY actions incur 0 step cost.
+        """
+        if action.action_type == "ADVANCE_DAY":
+            return 0.0
+
+        fee = float(action.cost)
+        transit_min = float(action.travel_time)
+        pref_norm = self.normalized_preference_scores.get(action.attraction_id, 0.5)
+
+        return W_FEE * fee + W_TRANSIT * transit_min + W_PREF * (1.0 - pref_norm)
+
     def path_cost(
         self,
         cost: float,
@@ -353,47 +414,44 @@ class TravelProblem:
         next_state: TravelState,
     ) -> float:
         """
-        Actual path cost: penalize high monetary cost and long travel times.
-        Reward visiting preferred attractions (lower cost = more preferred).
+        Cumulative path cost: g(n') = g(n) + c(step).
+        All step costs are non-negative, preserving monotonicity of path cost.
         """
-        monetary_cost = action.cost
-        time_cost = action.travel_time * 2.0   # 2 rupees per travel minute (opportunity cost)
-        # Preference reward: subtract value of visiting preferred attraction
-        pref_score = self.preference_scores.get(action.attraction_id, 0.5)
-        preference_reward = pref_score * 100   # up to 100 "reward" points
+        return cost + self.step_cost(state, action, next_state)
 
-        step_cost = monetary_cost + time_cost - preference_reward
-        return cost + max(0.0, step_cost)
+    def attraction_base_cost(self, attraction: Dict) -> float:
+        """
+        Attraction base cost excluding transit:
+        base_cost(a) = W_FEE * entry_fee + W_PREF * (1 - pref_norm)
+        Used for admissible and consistent heuristic calculation.
+        """
+        fee = float(attraction.get("entry_fee", 0))
+        aid = attraction["id"]
+        pref_norm = self.normalized_preference_scores.get(aid, 0.5)
+        return W_FEE * fee + W_PREF * (1.0 - pref_norm)
 
     def heuristic(self, state: TravelState) -> float:
         """
-        A* heuristic: admissible estimate of remaining cost.
-        Uses the cheapest unvisited attractions' entry fees + estimated travel time.
+        Admissible and consistent heuristic h(n):
+        needed = max(0, days * 2 - len(visited))
+        h(n) = sum of the `needed` smallest values of (W_FEE * entry_fee + W_PREF * (1 - pref_norm))
+               over unvisited attractions. Transit term is explicitly excluded.
+        If needed == 0, returns 0.0.
+
+        Optimality Guarantee:
+        A* search is guaranteed to be optimal with respect to the defined cost function
+        because h(n) is admissible (h(n) <= h*(n)) and consistent (h(n) <= c(n, n') + h(n')).
         """
+        needed = max(0, self.days * 2 - len(state.visited_attractions))
+        if needed == 0:
+            return 0.0
+
         visited_set = set(state.visited_attractions)
         unvisited = [a for a in self.attractions if a["id"] not in visited_set]
-
         if not unvisited:
             return 0.0
 
-        min_attractions_needed = max(0, self.days * 2 - len(state.visited_attractions))
-        if min_attractions_needed == 0:
-            return 0.0
+        base_costs = [self.attraction_base_cost(a) for a in unvisited]
+        base_costs.sort()
 
-        # Sort by entry_fee ascending (admissible: cheapest possible remaining cost)
-        unvisited_sorted = sorted(unvisited, key=lambda a: a.get("entry_fee", 0))
-        needed = unvisited_sorted[:min_attractions_needed]
-
-        h = sum(a.get("entry_fee", 0) for a in needed)
-
-        # Add minimum travel time estimate (nearest neighbor distances)
-        clat, clng = self._get_location_coords(state.current_location)
-        if needed:
-            # Estimate travel to nearest needed attraction
-            min_dist = min(
-                _haversine_km(clat, clng, a.get("lat", clat), a.get("lng", clng))
-                for a in needed
-            )
-            h += _travel_minutes(min_dist, self.transport_mode) * 2.0
-
-        return h
+        return sum(base_costs[:needed])

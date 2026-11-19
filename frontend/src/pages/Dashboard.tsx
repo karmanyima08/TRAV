@@ -15,6 +15,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTrip } from '../context/TripContext';
 import { tripsAPI } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -22,6 +23,7 @@ import { Badge } from '../components/ui/Badge';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const { savedTrips, deleteSavedTrip, setCurrentTrip, setGeneratedItinerary } = useTrip();
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -29,9 +31,20 @@ export const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const data = await tripsAPI.list();
-      setTrips(data);
+      // Merge backend trips with locally persisted savedTrips
+      const map = new Map<string, any>();
+      (savedTrips || []).forEach((t) => {
+        if (t?.id) map.set(t.id, t);
+      });
+      (data || []).forEach((t: any) => {
+        if (t?.id) {
+          map.set(t.id, { ...map.get(t.id), ...t });
+        }
+      });
+      setTrips(Array.from(map.values()));
     } catch (e) {
-      console.error('Failed to load trips:', e);
+      console.warn('Backend tripsAPI.list unavailable, falling back to local savedTrips:', e);
+      setTrips(savedTrips || []);
     } finally {
       setLoading(false);
     }
@@ -39,12 +52,17 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchTrips();
-  }, []);
+  }, [savedTrips.length]);
 
   const handleDelete = async (tripId: string) => {
     if (window.confirm('Delete this saved trip plan?')) {
-      await tripsAPI.delete(tripId);
-      setTrips(trips.filter((t) => t.id !== tripId));
+      try {
+        await tripsAPI.delete(tripId);
+      } catch (e) {
+        console.warn('Backend delete failed, removing locally:', e);
+      }
+      deleteSavedTrip(tripId);
+      setTrips((prev) => prev.filter((t) => t.id !== tripId));
     }
   };
 
@@ -53,20 +71,23 @@ export const Dashboard: React.FC = () => {
     0
   );
 
+  const uniqueCities = new Set(trips.map((t) => t.destination).filter(Boolean)).size;
+  const totalDays = trips.reduce((sum, t) => sum + (t.params?.num_days || 3), 0);
+
   return (
     <div className="space-y-8">
       {/* Welcome & Stats Banner */}
       <div className="bg-gradient-to-r from-navy-900 to-navy-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 text-xs font-semibold text-teal mb-3 border border-navy-700">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Travel Workspace</span>
+            <Compass className="w-3.5 h-3.5" />
+            <span>Travel Workspace</span>
           </div>
           <h1 className="text-3xl font-bold font-display tracking-tight text-white">
             Welcome back, {user?.name || 'Traveler'}
           </h1>
           <p className="text-xs text-gray-300 mt-1 max-w-xl">
-            Review your saved itineraries, audit algorithmic search states, or synthesize a new trip.
+            Review your saved itineraries, plan new adventures, or customize your group travel plans.
           </p>
         </div>
 
@@ -85,7 +106,7 @@ export const Dashboard: React.FC = () => {
         <Card className="p-5">
           <span className="text-gray-400 text-xs font-semibold block uppercase">Saved Trips</span>
           <div className="text-2xl font-bold text-navy-900 mt-1">{trips.length} Plans</div>
-          <span className="text-[11px] text-teal font-medium">Deterministic verified</span>
+          <span className="text-[11px] text-teal font-medium">Ready to travel</span>
         </Card>
         <Card className="p-5">
           <span className="text-gray-400 text-xs font-semibold block uppercase">Total Planned Budget</span>
@@ -93,34 +114,19 @@ export const Dashboard: React.FC = () => {
           <span className="text-[11px] text-gray-400">Across all trips</span>
         </Card>
         <Card className="p-5">
-          <span className="text-gray-400 text-xs font-semibold block uppercase">AI Algorithms Active</span>
-          <div className="text-2xl font-bold text-primary mt-1">5 Solvers</div>
-          <span className="text-[11px] text-gray-400">A*, CSP, FC, Forward Chaining</span>
+          <span className="text-gray-400 text-xs font-semibold block uppercase">Cities Explored</span>
+          <div className="text-2xl font-bold text-primary mt-1">{uniqueCities} Destinations</div>
+          <span className="text-[11px] text-gray-400">Unique places</span>
         </Card>
         <Card className="p-5">
-          <span className="text-gray-400 text-xs font-semibold block uppercase">Autonomous Agents</span>
-          <div className="text-2xl font-bold text-teal mt-1">5 Agents</div>
-          <span className="text-[11px] text-teal font-medium">PEAS Synchronized</span>
+          <span className="text-gray-400 text-xs font-semibold block uppercase">Days Planned</span>
+          <div className="text-2xl font-bold text-teal mt-1">{totalDays} Days</div>
+          <span className="text-[11px] text-teal font-medium">Full itineraries</span>
         </Card>
       </div>
 
       {/* Quick Launch Shortcuts */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link to="/ai-explorer">
-          <Card hover className="p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-navy-900">AI Algorithm Visualizer</div>
-                <div className="text-xs text-text-secondary">Explore search tree & CSP steps</div>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-gray-400" />
-          </Card>
-        </Link>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link to="/budget-simulator">
           <Card hover className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -129,7 +135,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <div>
                 <div className="font-bold text-sm text-navy-900">Budget Simulator</div>
-                <div className="text-xs text-text-secondary">Interactive what-if recalculator</div>
+                <div className="text-xs text-text-secondary">Interactive budget reallocation & planning</div>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-gray-400" />
@@ -143,8 +149,8 @@ export const Dashboard: React.FC = () => {
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <div className="font-bold text-sm text-navy-900">Group Optimizer</div>
-                <div className="text-xs text-text-secondary">Pareto-optimal group balancer</div>
+                <div className="font-bold text-sm text-navy-900">Group Trip Planner</div>
+                <div className="text-xs text-text-secondary">Balance preferences for the whole group</div>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-gray-400" />
@@ -167,7 +173,7 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-1">
               <h3 className="font-bold text-base text-navy-900">No Trips Created Yet</h3>
               <p className="text-xs text-text-secondary max-w-sm mx-auto">
-                Launch the trip wizard to experience constraint-satisfaction travel synthesis in seconds.
+                Launch the trip wizard to create your first customized travel itinerary in seconds.
               </p>
             </div>
             <Link to="/plan">
@@ -215,6 +221,10 @@ export const Dashboard: React.FC = () => {
                   {trip.status === 'generated' ? (
                     <Link
                       to={`/itinerary/${trip.id}`}
+                      onClick={() => {
+                        setCurrentTrip(trip);
+                        if (trip.itinerary) setGeneratedItinerary(trip.itinerary);
+                      }}
                       className="text-xs font-bold text-primary hover:text-primary-600 flex items-center gap-1"
                     >
                       Open Itinerary <ArrowRight className="w-3.5 h-3.5" />
@@ -222,14 +232,14 @@ export const Dashboard: React.FC = () => {
                   ) : (
                     <Link
                       to={`/itinerary/${trip.id}`}
+                      onClick={() => {
+                        setCurrentTrip(trip);
+                      }}
                       className="text-xs font-bold text-teal hover:underline flex items-center gap-1"
                     >
                       Generate Now <Sparkles className="w-3.5 h-3.5" />
                     </Link>
                   )}
-                  <span className="text-[10px] text-gray-400 font-mono">
-                    ID: {trip.id.slice(0, 8)}
-                  </span>
                 </div>
               </Card>
             ))}

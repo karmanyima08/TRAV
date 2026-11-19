@@ -19,9 +19,9 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
   const agents = [
     { name: 'DestinationResearchAgent', label: 'Destination Researcher', color: 'text-blue-500 bg-blue-50' },
     { name: 'UserPreferenceAgent', label: 'Preference Evaluator', color: 'text-indigo-500 bg-indigo-50' },
-    { name: 'ItineraryPlanningAgent', label: 'A* State Search Planner', color: 'text-purple-500 bg-purple-50' },
-    { name: 'ConstraintValidationAgent', label: 'CSP Constraint Validator', color: 'text-teal-600 bg-teal-50' },
-    { name: 'OptimizationRecoveryAgent', label: 'Route & Dynamic Recovery', color: 'text-emerald-500 bg-emerald-50' },
+    { name: 'ItineraryPlanningAgent', label: 'Route & Schedule Planner', color: 'text-purple-500 bg-purple-50' },
+    { name: 'ConstraintValidationAgent', label: 'Schedule Validator', color: 'text-teal-600 bg-teal-50' },
+    { name: 'OptimizationRecoveryAgent', label: 'Route & Schedule Assistant', color: 'text-emerald-500 bg-emerald-50' },
   ];
 
   return (
@@ -34,21 +34,21 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
           </div>
           <div>
             <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
-              Autonomous AI Agent Team
+              Trip Planning Engine
               {isGenerating ? (
                 <span className="flex items-center gap-1.5 text-[11px] text-teal font-normal">
                   <span className="w-2 h-2 rounded-full bg-teal animate-ping" />
-                  Synthesizing
+                  Generating
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-normal">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Execution Complete
+                  Complete
                 </span>
               )}
             </h3>
             <p className="text-[11px] text-gray-400">
-              Multi-Agent Architecture (Topic 5 PEAS Framework)
+              Coordinated travel generation pipeline
             </p>
           </div>
         </div>
@@ -59,7 +59,7 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
               onClick={() => setShowPeas(!showPeas)}
               className="text-xs px-2.5 py-1 rounded-lg bg-navy-800 hover:bg-navy-700 text-gray-300 font-medium transition-colors"
             >
-              {showPeas ? 'Hide PEAS' : 'View PEAS Framework'}
+              {showPeas ? 'Hide Details' : 'View Specifications'}
             </button>
           )}
           <button
@@ -107,7 +107,7 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
           {showPeas && peasFramework && (
             <div className="p-4 rounded-xl bg-navy-950 border border-navy-800 space-y-3">
               <h4 className="text-xs font-bold text-teal uppercase tracking-wider">
-                PEAS Formal Specification (Course Topic 5)
+                System Specification
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                 {Object.entries(peasFramework).map(([agentName, peas]) => (
@@ -131,9 +131,9 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
               <div className="flex items-center justify-between text-xs text-gray-400 mb-2 font-mono">
                 <span className="flex items-center gap-1.5">
                   <Terminal className="w-3.5 h-3.5 text-teal" />
-                  Agent Execution Log Stream ({logs.length} events)
+                  Execution Log Stream ({logs.length} events)
                 </span>
-                <span>Deterministic AI Trace</span>
+                <span>System Trace</span>
               </div>
               <div className="max-h-44 overflow-y-auto rounded-xl bg-black/50 border border-navy-800 p-3 font-mono text-[11px] space-y-1.5">
                 {logs.map((log, idx) => (

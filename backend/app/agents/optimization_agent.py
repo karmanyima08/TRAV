@@ -105,9 +105,52 @@ class OptimizationRecoveryAgent(BaseAgent):
                     "ai_explanation": " ".join(attr.get("ai_explanations", [])) or f"Matched based on high traveler rating and convenient schedule."
                 })
 
-            # Pair nearest lunch & dinner
-            lunch_rest = scored_restaurants[0] if scored_restaurants else None
-            dinner_rest = scored_restaurants[1] if len(scored_restaurants) > 1 else lunch_rest
+            # If all slots for this day were FREE, provide structured cultural leisure activities
+            if not day_activities:
+                dest = context.get("destination", {})
+                d_lat = dest.get("lat", 26.9124)
+                d_lng = dest.get("lng", 75.7873)
+                day_activities.append({
+                    "slot_label": "morning",
+                    "time_window": "9:30 - 12:30",
+                    "attraction_id": f"leisure_morning_d{day_num}",
+                    "name": "Local Cultural Bazaars & Morning Walk",
+                    "category": "cultural",
+                    "description": "Relaxed walking tour of authentic local market lanes, artisan workshops, and morning street cafes.",
+                    "lat": d_lat + 0.005,
+                    "lng": d_lng + 0.005,
+                    "entry_fee": 0.0,
+                    "duration_hours": 3.0,
+                    "transit_from_previous_min": 10,
+                    "distance_from_previous_km": 1.5,
+                    "ai_score": 0.80,
+                    "ai_explanation": "Scheduled for relaxing local immersion and flexible travel pace."
+                })
+                day_activities.append({
+                    "slot_label": "evening",
+                    "time_window": "17:00 - 19:30",
+                    "attraction_id": f"leisure_evening_d{day_num}",
+                    "name": "Scenic Sunset & Twilight Promenade",
+                    "category": "nature",
+                    "description": "Unwind with panoramic twilight views, scenic photography, and local tea or snacks.",
+                    "lat": d_lat - 0.005,
+                    "lng": d_lng - 0.005,
+                    "entry_fee": 0.0,
+                    "duration_hours": 2.5,
+                    "transit_from_previous_min": 15,
+                    "distance_from_previous_km": 2.0,
+                    "ai_score": 0.80,
+                    "ai_explanation": "Scenic relaxation time scheduled before dinner."
+                })
+
+            # Rotate restaurants across days for varied culinary experiences
+            n_rest = len(scored_restaurants) if scored_restaurants else 0
+            if n_rest > 0:
+                lunch_rest = scored_restaurants[(2 * (day_num - 1)) % n_rest]
+                dinner_rest = scored_restaurants[(2 * (day_num - 1) + 1) % n_rest]
+            else:
+                lunch_rest = None
+                dinner_rest = None
 
             final_days.append({
                 "day_number": day_num,

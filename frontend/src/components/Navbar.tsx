@@ -1,17 +1,25 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Sparkles, Sliders, Users, MapPin, LayoutDashboard, LogOut } from 'lucide-react';
+import { Compass, Sparkles, Sliders, Users, MapPin, LayoutDashboard, LogOut, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTrip } from '../context/TripContext';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const { currentTrip } = useTrip();
   const location = useLocation();
 
   const navLinks = [
     { label: 'Plan Trip', path: '/plan', icon: Compass },
-    { label: 'AI Search & CSP', path: '/ai-explorer', icon: Sparkles },
-    { label: 'Budget Simulator', path: '/budget-simulator', icon: Sliders },
-    { label: 'Group Optimizer', path: '/group-optimizer', icon: Users },
+    ...(currentTrip?.id
+      ? [{ label: 'My Itinerary', path: `/itinerary/${currentTrip.id}`, icon: Calendar }]
+      : []),
+    {
+      label: 'Budget Simulator',
+      path: currentTrip?.id ? `/budget-simulator?tripId=${currentTrip.id}` : '/budget-simulator',
+      icon: Sliders,
+    },
+    { label: 'Group Trip Planner', path: '/group-optimizer', icon: Users },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   ];
 
@@ -28,7 +36,7 @@ export const Navbar: React.FC = () => {
               TRAVORA
             </span>
             <span className="block text-[10px] font-semibold uppercase tracking-wider text-teal -mt-1">
-              AI Travel Engine
+              Smart Travel Planner
             </span>
           </div>
         </Link>

@@ -24,17 +24,38 @@ import { Itinerary, Activity } from '../services/types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { AgentActivityPanel } from '../components/ui/AgentActivityPanel';
 import { InteractiveRouteMap } from '../components/InteractiveRouteMap';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
+const formatWhyPicked = (explanation?: string, category?: string) => {
+  if (!explanation) {
+    return `Matches your travel interests and preferred schedule.`;
+  }
+  let text = explanation
+    .replace(/Rule\s+[A-Za-z0-9_-]+/gi, '')
+    .replace(/R\d{3}/gi, '')
+    .replace(/\b(CSP|A\*|MRV|LCV|Forward Chaining|PEAS|XAI|heuristic)\b/gi, '')
+    .trim();
+  if (!text || text.length < 5) {
+    return `Matches your interest in ${category || 'local sights'} and fits your daily schedule.`;
+  }
+  return text;
+};
+
 export const ItineraryPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
-  const { generatedItinerary, setGeneratedItinerary } = useTrip();
+  const { currentTrip, setCurrentTrip, generatedItinerary, setGeneratedItinerary } = useTrip();
 
-  const [itinerary, setItinerary] = useState<Itinerary | null>(generatedItinerary);
+  // If generatedItinerary is for this tripId, use it as initial state
+  const isMatchingCached =
+    generatedItinerary &&
+    ((generatedItinerary as any).trip_id === tripId || currentTrip?.id === tripId);
+
+  const [itinerary, setItinerary] = useState<Itinerary | null>(
+    isMatchingCached ? generatedItinerary : null
+  );
   const [activeDay, setActiveDay] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(!generatedItinerary);
+  const [loading, setLoading] = useState<boolean>(!isMatchingCached);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Recovery Modal State
@@ -46,12 +67,16 @@ export const ItineraryPage: React.FC = () => {
 
   useEffect(() => {
     const fetchItinerary = async () => {
-      if (!itinerary && tripId) {
+      if ((!itinerary || currentTrip?.id !== tripId) && tripId) {
         setLoading(true);
         try {
           const data = await tripsAPI.getItinerary(tripId);
           setItinerary(data);
           setGeneratedItinerary(data);
+          try {
+            const tripObj = await tripsAPI.get(tripId);
+            if (tripObj) setCurrentTrip(tripObj);
+          } catch {}
         } catch (err) {
           console.error('Failed to load itinerary:', err);
         } finally {
@@ -67,10 +92,10 @@ export const ItineraryPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-20 text-center space-y-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
         <h2 className="text-xl font-bold font-display text-navy-900">
-          Synthesizing Constraint-Feasible Itinerary...
+          Generating Your Personalized Itinerary...
         </h2>
         <p className="text-xs text-text-secondary">
-          Running A* Search, CSP Backtracking with MRV, and Forward Checking.
+          Finding the best attractions, timing, and routes for your trip.
         </p>
       </div>
     );
@@ -121,11 +146,8 @@ export const ItineraryPage: React.FC = () => {
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-card flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="primary" size="sm">
-              Deterministic Plan Verified
-            </Badge>
             <Badge variant="teal" size="sm">
-              Algorithm: {itinerary.trip_params?.search_algorithm?.toUpperCase() || 'A*'}
+              Personalized Plan
             </Badge>
           </div>
           <h1 className="text-3xl font-bold font-display text-navy-900 tracking-tight">
@@ -171,7 +193,7 @@ export const ItineraryPage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-xs text-teal-800 flex items-start justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-teal shrink-0" />
-            <span><strong>Dynamic Recovery Applied:</strong> {recoveryNotice}</span>
+            <span><strong>Activity Updated:</strong> {recoveryNotice}</span>
           </div>
           <button
             onClick={() => setRecoveryNotice(null)}
@@ -238,7 +260,7 @@ export const ItineraryPage: React.FC = () => {
                       </span>
                       <button
                         onClick={() => handleOpenRecovery(activity)}
-                        title="Simulate Venue Closure / Dynamic Recovery"
+                        title="Replace this activity"
                         className="text-[11px] px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors flex items-center gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
@@ -254,12 +276,12 @@ export const ItineraryPage: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* AI Explanation Accordion / Callout */}
+                  {/* Why we picked this Callout */}
                   <div className="p-3 rounded-xl bg-surface border border-gray-100 text-xs text-gray-600 flex items-start gap-2.5">
                     <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-navy-900">Why was this scheduled?</strong>{' '}
-                      {activity.ai_explanation}
+                      <strong className="text-navy-900">Why we picked this:</strong>{' '}
+                      {formatWhyPicked(activity.ai_explanation, activity.category)}
                     </div>
                   </div>
 
@@ -346,16 +368,6 @@ export const ItineraryPage: React.FC = () => {
                 </span>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </Link>
-              <Link
-                to="/ai-explorer"
-                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-navy-900 hover:bg-gray-50 flex items-center justify-between transition-colors"
-              >
-                <span className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Inspect Search Tree & CSP Steps
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </Link>
             </div>
           </Card>
 
@@ -396,56 +408,20 @@ export const ItineraryPage: React.FC = () => {
               ))}
             </div>
           </Card>
-
-          {/* Algorithmic Search Telemetry */}
-          {itinerary.search_metadata && (
-            <Card className="p-6 space-y-3 bg-navy-900 text-white border-navy-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal">Search Engine Telemetry</span>
-                <span className="text-[11px] font-mono text-gray-400">
-                  {itinerary.search_metadata.execution_time_ms} ms
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                <div>
-                  <span className="text-gray-400 block text-[10px]">Algorithm</span>
-                  <span className="font-bold text-white">{itinerary.search_metadata.algorithm}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px]">States Explored</span>
-                  <span className="font-bold text-teal">{itinerary.search_metadata.total_explored}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px]">Path Cost g(n)</span>
-                  <span className="font-bold text-white">₹{itinerary.search_metadata.path_cost}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[10px]">Heuristic h(n)</span>
-                  <span className="font-bold text-teal">₹{itinerary.search_metadata.heuristic_cost}</span>
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
-
-      {/* Multi-Agent Audit Activity Panel */}
-      <AgentActivityPanel
-        logs={itinerary.agent_logs}
-        peasFramework={itinerary.peas_framework}
-      />
 
       {/* Dynamic Recovery Modal */}
       {recoveryModalOpen && targetRecoveryActivity && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2.5 text-amber-600">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-bold text-base text-navy-900">Dynamic Itinerary Recovery</h3>
+            <div className="flex items-center gap-2.5 text-teal">
+              <RefreshCw className="w-5 h-5 text-teal" />
+              <h3 className="font-bold text-base text-navy-900">Replace Activity</h3>
             </div>
             <p className="text-xs text-text-secondary leading-relaxed">
               Target Activity: <strong>{targetRecoveryActivity.name}</strong>.
-              The Optimization and Recovery Agent will replace this venue using local CSP constraints without altering the rest of your trip.
+              We'll find the best available alternative nearby that fits your budget and timing without altering the rest of your trip.
             </p>
 
             <div>
@@ -478,7 +454,7 @@ export const ItineraryPage: React.FC = () => {
                 onClick={handleExecuteRecovery}
                 icon={<RefreshCw className="w-3.5 h-3.5" />}
               >
-                Execute Recovery
+                Find Replacement
               </Button>
             </div>
           </div>

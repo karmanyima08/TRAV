@@ -18,7 +18,7 @@ class BacktrackingCSPSolver:
     Implements MRV, Degree Heuristic, LCV, and Forward Checking.
     """
 
-    def __init__(self, csp_model: CSPModel, max_steps: int = 1500):
+    def __init__(self, csp_model: CSPModel, max_steps: int = 3000):
         self.model = csp_model
         self.max_steps = max_steps
         self.steps_log: List[Dict[str, Any]] = []
@@ -74,8 +74,8 @@ class BacktrackingCSPSolver:
 
         def count_conflicts(val: str) -> int:
             if val == "FREE":
-                # FREE slots never constrain neighbors
-                return 0
+                # Real attractions are prioritized; FREE is only selected as fallback
+                return 999999
             conflicts = 0
             for n in neighbors:
                 if val in domains[n]:
@@ -130,6 +130,11 @@ class BacktrackingCSPSolver:
         assignment: Dict[str, str] = {}
         success = self._backtrack(assignment, initial_domains)
         exec_time_ms = (time.perf_counter() - start_time) * 1000.0
+
+        # Fallback for any unassigned variables (e.g. if search horizon was reached)
+        for var_name, var in self.model.variables.items():
+            if var_name not in assignment:
+                assignment[var_name] = "FREE"
 
         # Construct final scheduled slots
         scheduled_slots = []

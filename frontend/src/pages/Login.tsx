@@ -38,13 +38,13 @@ export const Login: React.FC = () => {
               Intelligent Itinerary Generator
             </h2>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Sign in to manage your saved travel itineraries, simulate budget scenarios, and explore algorithmic search trees.
+              Sign in to manage your saved travel itineraries, plan group trips, and simulate budget scenarios.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-navy-800/80 border border-navy-700/80 text-xs text-gray-300 space-y-1.5 mt-8">
             <div className="text-teal font-semibold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" /> Academic Demo Credentials Preloaded
+              <ShieldCheck className="w-4 h-4" /> Demo Credentials Preloaded
             </div>
             <div>Email: <code className="text-white">demo@travora.ai</code></div>
             <div>Password: <code className="text-white">Travora2026!</code></div>

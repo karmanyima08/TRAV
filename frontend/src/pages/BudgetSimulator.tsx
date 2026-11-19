@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { tripsAPI } from '../services/api';
+import { useTrip } from '../context/TripContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -19,32 +20,38 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } fro
 
 export const BudgetSimulator: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const tripId = searchParams.get('tripId') || 'demo_trip_jaipur';
+  const { currentTrip, generatedItinerary } = useTrip();
 
-  const [newBudget, setNewBudget] = useState<number>(35000);
+  // Resolve tripId from query params, current active trip, or fallback
+  const tripId = searchParams.get('tripId') || currentTrip?.id || 'demo_trip_jaipur';
+  const initialBudget = currentTrip?.params?.budget || 35000;
+
+  const [activeTripId, setActiveTripId] = useState<string>(tripId);
+  const [newBudget, setNewBudget] = useState<number>(initialBudget);
   const [loading, setLoading] = useState<boolean>(false);
   const [simResult, setSimResult] = useState<any | null>(null);
 
   const runSimulation = async (budgetVal: number) => {
     setLoading(true);
     try {
-      // First ensure a trip exists or create a demo trip
-      let activeTripId = tripId;
+      let targetTripId = tripId;
       try {
-        await tripsAPI.get(activeTripId);
+        await tripsAPI.get(targetTripId);
       } catch {
+        // Fallback: create trip matching current trip or demo
         const created = await tripsAPI.create({
-          title: 'Jaipur Heritage Budget Test',
-          destination: 'jaipur',
-          num_days: 3,
-          budget: 20000,
-          interests: ['historical', 'cultural'],
+          title: currentTrip?.title || 'Jaipur Heritage Budget Test',
+          destination: currentTrip?.destination || 'jaipur',
+          num_days: currentTrip?.params?.num_days || 3,
+          budget: currentTrip?.params?.budget || 20000,
+          interests: currentTrip?.params?.interests || ['historical', 'cultural'],
         });
         await tripsAPI.generateItinerary(created.id);
-        activeTripId = created.id;
+        targetTripId = created.id;
       }
+      setActiveTripId(targetTripId);
 
-      const res = await tripsAPI.simulateBudget(activeTripId, budgetVal);
+      const res = await tripsAPI.simulateBudget(targetTripId, budgetVal);
       setSimResult(res);
     } catch (err: any) {
       alert(`Simulation error: ${err?.response?.data?.detail || err.message}`);
@@ -54,8 +61,8 @@ export const BudgetSimulator: React.FC = () => {
   };
 
   useEffect(() => {
-    runSimulation(35000);
-  }, []);
+    runSimulation(initialBudget);
+  }, [tripId]);
 
   const chartData = simResult
     ? [
@@ -87,24 +94,30 @@ export const BudgetSimulator: React.FC = () => {
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="teal" size="sm">Dynamic What-If Engine</Badge>
-            <Badge variant="primary" size="sm">Course Objective #5</Badge>
-          </div>
           <h1 className="text-3xl font-bold font-display text-navy-900 tracking-tight">
             Budget What-If Simulator
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Observe how adjusting travel budget reallocates attraction tiers, hotel standards, and meal selections in real time.
+            See how adjusting your travel budget updates attraction tiers, hotel standards, and meal selections in real time.
           </p>
         </div>
 
-        <Link
-          to="/plan"
-          className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-        >
-          Plan a new trip instead <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-4">
+          {activeTripId && (
+            <Link
+              to={`/itinerary/${activeTripId}`}
+              className="text-xs font-bold text-teal bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 hover:bg-teal-100 flex items-center gap-1 transition-colors"
+            >
+              Back to Itinerary
+            </Link>
+          )}
+          <Link
+            to="/plan"
+            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+          >
+            Plan a new trip instead <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Interactive Slider Card */}

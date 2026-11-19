@@ -89,15 +89,11 @@ export const GroupOptimizer: React.FC = () => {
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="teal" size="sm">Consensus Engine</Badge>
-            <Badge variant="primary" size="sm">Course Objective #3</Badge>
-          </div>
           <h1 className="text-3xl font-bold font-display text-navy-900 tracking-tight">
-            Group Travel Preference Optimizer
+            Group Trip Planner
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Aggregates conflicting traveler interests through weighted Pareto balancing without allowing one person's taste to dominate.
+            Add everyone's interests and budget, and we'll build a trip that works for the whole group.
           </p>
         </div>
 
@@ -106,7 +102,7 @@ export const GroupOptimizer: React.FC = () => {
           loading={loading}
           icon={<Sparkles className="w-3.5 h-3.5" />}
         >
-          Synthesize Balanced Itinerary
+          Build group itinerary
         </Button>
       </div>
 
@@ -231,7 +227,7 @@ export const GroupOptimizer: React.FC = () => {
           {result.itinerary && (
             <Card className="p-6 space-y-4">
               <h3 className="font-bold text-base text-navy-900">
-                Synthesized Consensus Itinerary ({result.itinerary.days?.length} Days)
+                Group Itinerary ({result.itinerary.days?.length} Days)
               </h3>
               <div className="space-y-4">
                 {result.itinerary.days?.map((day: any) => (

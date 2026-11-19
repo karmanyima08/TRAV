@@ -24,25 +24,91 @@ import { Badge } from '../components/ui/Badge';
 export const TripWizard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setCurrentTrip, setGeneratedItinerary } = useTrip();
+  const {
+    setCurrentTrip,
+    setGeneratedItinerary,
+    wizardDraft,
+    setWizardDraft,
+    clearWizardDraft,
+  } = useTrip();
 
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(wizardDraft?.step || 1);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Form State
-  const [destination, setDestination] = useState<string>(searchParams.get('dest') || 'jaipur');
-  const [startDate, setStartDate] = useState<string>('2026-12-01');
-  const [numDays, setNumDays] = useState<number>(3);
-  const [travelers, setTravelers] = useState<number>(1);
-  const [travelType, setTravelType] = useState<string>('solo');
-  const [budget, setBudget] = useState<number>(20000);
-  const [budgetCategory, setBudgetCategory] = useState<string>('mid');
-  const [interests, setInterests] = useState<string[]>(['historical', 'cultural']);
-  const [dietary, setDietary] = useState<string[]>(['veg']);
-  const [walkingComfort, setWalkingComfort] = useState<string>('moderate');
-  const [accessibility, setAccessibility] = useState<boolean>(false);
-  const [transport, setTransport] = useState<string>('auto');
+  // Form State initialized from persistent draft or query params or defaults
+  const [destination, setDestination] = useState<string>(
+    searchParams.get('dest') || wizardDraft?.destination || 'jaipur'
+  );
+  const [startDate, setStartDate] = useState<string>(wizardDraft?.startDate || '2026-12-01');
+  const [numDays, setNumDays] = useState<number>(wizardDraft?.numDays || 3);
+  const [travelers, setTravelers] = useState<number>(wizardDraft?.travelers || 1);
+  const [travelType, setTravelType] = useState<string>(wizardDraft?.travelType || 'solo');
+  const [budget, setBudget] = useState<number>(wizardDraft?.budget || 20000);
+  const [budgetCategory, setBudgetCategory] = useState<string>(wizardDraft?.budgetCategory || 'mid');
+  const [interests, setInterests] = useState<string[]>(
+    wizardDraft?.interests || ['historical', 'cultural']
+  );
+  const [dietary, setDietary] = useState<string[]>(wizardDraft?.dietary || ['veg']);
+  const [walkingComfort, setWalkingComfort] = useState<string>(
+    wizardDraft?.walkingComfort || 'moderate'
+  );
+  const [accessibility, setAccessibility] = useState<boolean>(
+    wizardDraft?.accessibility ?? false
+  );
+  const [transport, setTransport] = useState<string>(wizardDraft?.transport || 'auto');
   const [algorithm, setAlgorithm] = useState<string>('astar');
+
+  // Auto-sync draft to persistent storage whenever form or step changes
+  React.useEffect(() => {
+    setWizardDraft({
+      destination,
+      startDate,
+      numDays,
+      travelers,
+      travelType,
+      budget,
+      budgetCategory,
+      interests,
+      dietary,
+      walkingComfort,
+      accessibility,
+      transport,
+      step,
+    });
+  }, [
+    destination,
+    startDate,
+    numDays,
+    travelers,
+    travelType,
+    budget,
+    budgetCategory,
+    interests,
+    dietary,
+    walkingComfort,
+    accessibility,
+    transport,
+    step,
+  ]);
+
+  const handleStartOver = () => {
+    if (window.confirm('Reset all trip planning details and start over?')) {
+      clearWizardDraft();
+      setStep(1);
+      setDestination('jaipur');
+      setStartDate('2026-12-01');
+      setNumDays(3);
+      setTravelers(1);
+      setTravelType('solo');
+      setBudget(20000);
+      setBudgetCategory('mid');
+      setInterests(['historical', 'cultural']);
+      setDietary(['veg']);
+      setWalkingComfort('moderate');
+      setAccessibility(false);
+      setTransport('auto');
+    }
+  };
 
   const destinationOptions = [
     { id: 'jaipur', name: 'Jaipur', state: 'Rajasthan', desc: 'Forts, Palaces, Bazaars' },
@@ -50,6 +116,7 @@ export const TripWizard: React.FC = () => {
     { id: 'goa', name: 'Goa Coast', state: 'Goa', desc: 'Beaches & Latin Quarter' },
     { id: 'agra', name: 'Agra', state: 'Uttar Pradesh', desc: 'Taj Mahal & Citadel' },
     { id: 'varanasi', name: 'Varanasi', state: 'Uttar Pradesh', desc: 'Ghats & Ancient Temples' },
+    { id: 'mumbai', name: 'Mumbai', state: 'Maharashtra', desc: 'Marine Drive & Island Caves' },
     { id: 'udaipur', name: 'Udaipur', state: 'Rajasthan', desc: 'Lake Pichola & Palaces' },
   ];
 
@@ -103,13 +170,14 @@ export const TripWizard: React.FC = () => {
       const createdTrip = await tripsAPI.create(tripPayload);
       setCurrentTrip(createdTrip);
 
-      // Trigger AI Pipeline
+      // Trigger Itinerary Generation Pipeline
       const itinerary = await tripsAPI.generateItinerary(createdTrip.id);
       setGeneratedItinerary(itinerary);
+      clearWizardDraft();
 
       navigate(`/itinerary/${createdTrip.id}`);
     } catch (err: any) {
-      alert(`Error running AI pipeline: ${err?.response?.data?.detail || err.message}`);
+      alert(`Error generating itinerary: ${err?.response?.data?.detail || err.message}`);
     } finally {
       setLoading(false);
     }
@@ -120,16 +188,30 @@ export const TripWizard: React.FC = () => {
       {/* Wizard Progress Bar */}
       <div className="mb-10">
         <div className="flex items-center justify-between text-xs font-semibold text-text-secondary mb-2">
-          <span>Step {step} of 8: {
-            step === 1 ? 'Destination & Dates' :
-            step === 2 ? 'Travel Party' :
-            step === 3 ? 'Budget Allocation' :
-            step === 4 ? 'Activity Interests' :
-            step === 5 ? 'Dining & Dietary' :
-            step === 6 ? 'Walking Stamina' :
-            step === 7 ? 'Transit Mode' : 'AI Engine Formulation'
-          }</span>
-          <span className="text-primary font-bold">{Math.round((step / 8) * 100)}% Complete</span>
+          <div className="flex items-center gap-2">
+            <span>Step {step} of 8: {
+              step === 1 ? 'Destination & Dates' :
+              step === 2 ? 'Travel Party' :
+              step === 3 ? 'Budget Allocation' :
+              step === 4 ? 'Activity Interests' :
+              step === 5 ? 'Dining & Dietary' :
+              step === 6 ? 'Walking Stamina' :
+              step === 7 ? 'Transit Mode' : 'Review your trip'
+            }</span>
+            <span className="text-[10px] text-teal bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+              Draft saved
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="text-[11px] text-text-secondary hover:text-red-500 underline"
+            >
+              Start over
+            </button>
+            <span className="text-primary font-bold">{Math.round((step / 8) * 100)}% Complete</span>
+          </div>
         </div>
         <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
           <div
@@ -145,7 +227,7 @@ export const TripWizard: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Choose Your Destination</h2>
-              <p className="text-xs text-text-secondary mt-1">Select from verified knowledge-base seeded cities.</p>
+              <p className="text-xs text-text-secondary mt-1">Select from our popular Indian travel destinations.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -259,7 +341,7 @@ export const TripWizard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Total Travel Budget</h2>
               <p className="text-xs text-text-secondary mt-1">
-                Used by CSP solver as a hard upper bound across activities, dining, and transit.
+                Sets the overall spending limit across activities, dining, and transit.
               </p>
             </div>
 
@@ -317,7 +399,7 @@ export const TripWizard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Select Activity Interests</h2>
               <p className="text-xs text-text-secondary mt-1">
-                Forward chaining rules match interests to boost attraction suitability scores.
+                We'll prioritize attractions and experiences that match what you enjoy most.
               </p>
             </div>
 
@@ -348,7 +430,7 @@ export const TripWizard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Dietary Restrictions & Dining</h2>
               <p className="text-xs text-text-secondary mt-1">
-                Strict CSP rules exclude non-compliant restaurants (e.g. Jain, Pure Veg, Halal).
+                We'll only suggest dining options that fit your food preferences and diet.
               </p>
             </div>
 
@@ -384,7 +466,7 @@ export const TripWizard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Physical Comfort & Accessibility</h2>
               <p className="text-xs text-text-secondary mt-1">
-                CSP limits consecutive walking tours based on daily physical fatigue thresholds.
+                We'll pace each day's walking to match your energy level and comfort.
               </p>
             </div>
 
@@ -419,7 +501,7 @@ export const TripWizard: React.FC = () => {
                 />
                 <div>
                   <div className="text-xs font-bold text-navy-900">Require Wheelchair Accessibility</div>
-                  <div className="text-[11px] text-gray-500">Prunes all attractions lacking verified ramps or step-free access.</div>
+                  <div className="text-[11px] text-gray-500">Only selects attractions with verified ramps or step-free access.</div>
                 </div>
               </label>
             </div>
@@ -432,7 +514,7 @@ export const TripWizard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold font-display text-navy-900">Local Transportation Preference</h2>
               <p className="text-xs text-text-secondary mt-1">
-                Used to compute transit travel times and step costs in state-space search.
+                Used to calculate travel times and routes between activities.
               </p>
             </div>
 
@@ -460,83 +542,52 @@ export const TripWizard: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 8: Review & AI Algorithm Selector */}
+        {/* STEP 8: Review your trip */}
         {step === 8 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold font-display text-navy-900">Review & AI Algorithm Selection</h2>
+              <h2 className="text-2xl font-bold font-display text-navy-900">Review your trip</h2>
               <p className="text-xs text-text-secondary mt-1">
-                Choose the State Space Search algorithm to execute on your problem formulation.
+                Everything looks ready! Review your trip summary below before we create your itinerary.
               </p>
             </div>
 
-            {/* Summary Chips */}
-            <div className="p-4 rounded-2xl bg-surface border border-gray-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-semibold">Destination</span>
-                <span className="font-bold text-navy-900 capitalize">{destination}</span>
+            {/* Summary Card */}
+            <div className="p-6 rounded-2xl bg-surface border border-gray-200/80 space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Destination</span>
+                  <span className="font-bold text-navy-900 capitalize text-sm">{destination}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Duration</span>
+                  <span className="font-bold text-navy-900 text-sm">{numDays} Days</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Budget</span>
+                  <span className="font-bold text-teal text-sm">₹{budget.toLocaleString('en-IN')}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-semibold">Stamina</span>
+                  <span className="font-bold text-navy-900 capitalize text-sm">{walkingComfort}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-semibold">Duration</span>
-                <span className="font-bold text-navy-900">{numDays} Days</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-semibold">Budget</span>
-                <span className="font-bold text-teal">₹{budget.toLocaleString('en-IN')}</span>
-              </div>
-              <div>
-                <span className="text-gray-400 block text-[10px] uppercase font-semibold">Stamina</span>
-                <span className="font-bold text-navy-900 capitalize">{walkingComfort}</span>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-navy-900 mb-2">
-                Primary Search Algorithm (Course Topic 2)
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  {
-                    id: 'astar',
-                    name: 'A* Search (Recommended)',
-                    desc: 'Optimal pathfinding with admissible heuristic f(n) = g(n) + h(n)',
-                    badge: 'Admissible & Optimal'
-                  },
-                  {
-                    id: 'greedy',
-                    name: 'Greedy Best-First Search',
-                    desc: 'Prioritizes immediate minimum heuristic h(n) estimate',
-                    badge: 'Heuristic Only'
-                  },
-                  {
-                    id: 'ucs',
-                    name: 'Uniform Cost Search (Dijkstra)',
-                    desc: 'Expands strictly lowest accumulated path cost g(n)',
-                    badge: 'Optimal Uninformed'
-                  },
-                  {
-                    id: 'bfs',
-                    name: 'Breadth-First Search (BFS)',
-                    desc: 'Level-by-level queue exploration for shortest hop count',
-                    badge: 'Unweighted'
-                  },
-                ].map((algo) => (
-                  <div
-                    key={algo.id}
-                    onClick={() => setAlgorithm(algo.id)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      algorithm === algo.id
-                        ? 'border-primary bg-primary-50/60 ring-2 ring-primary/20'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-navy-900">{algo.name}</span>
-                      <Badge variant="primary" size="sm">{algo.badge}</Badge>
-                    </div>
-                    <div className="text-[11px] text-gray-500">{algo.desc}</div>
-                  </div>
-                ))}
+              <div className="pt-4 border-t border-gray-200/60">
+                <span className="text-gray-400 block text-[10px] uppercase font-semibold mb-2">Interests</span>
+                <div className="flex flex-wrap gap-2">
+                  {interests.map((intId) => {
+                    const opt = interestOptions.find((o) => o.id === intId);
+                    return (
+                      <span
+                        key={intId}
+                        className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
+                      >
+                        {opt ? opt.label : intId}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -570,7 +621,7 @@ export const TripWizard: React.FC = () => {
               icon={<Sparkles className="w-4 h-4" />}
               className="bg-gradient-to-r from-primary to-teal text-white shadow-lg"
             >
-              Generate AI Itinerary
+              Generate my itinerary
             </Button>
           )}
         </div>

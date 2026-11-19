@@ -69,6 +69,163 @@ def test_search_algorithms_comparison(sample_jaipur_data):
     assert res_greedy["algorithm"] == "Greedy Best-First"
 
 
+def test_all_step_costs_non_negative(sample_jaipur_data):
+    """Verify that all transition step costs c(step) are strictly non-negative."""
+    problem = TravelProblem(
+        destination="Jaipur",
+        attractions=sample_jaipur_data[:6],
+        days=2,
+        budget=15000,
+        preferences={"interests": ["historical", "cultural"]}
+    )
+    queue = [problem.get_initial_state()]
+    visited_states = set()
+    transitions_checked = 0
+
+    while queue and len(visited_states) < 30:
+        state = queue.pop(0)
+        s_hash = (state.current_day, state.current_time, state.current_location, tuple(state.visited_attractions))
+        if s_hash in visited_states:
+            continue
+        visited_states.add(s_hash)
+
+        for action in problem.get_actions(state):
+            next_state = problem.apply_action(state, action)
+            step_cost = problem.step_cost(state, action, next_state)
+            path_step = problem.path_cost(0.0, state, action, next_state)
+            assert step_cost >= 0.0, f"Negative step cost encountered: {step_cost}"
+            assert path_step >= 0.0, f"Negative path step cost encountered: {path_step}"
+            assert abs(step_cost - path_step) < 1e-9
+            transitions_checked += 1
+            queue.append(next_state)
+
+    assert transitions_checked > 0
+
+
+def test_heuristic_admissible_brute_force(sample_jaipur_data):
+    """
+    Verify h(n) <= h*(n) (admissibility) by brute-force exhaustive search on a small instance.
+    """
+    small_attractions = sample_jaipur_data[:4]
+    problem = TravelProblem(
+        destination="Jaipur",
+        attractions=small_attractions,
+        days=1,
+        budget=10000,
+        preferences={"interests": ["historical"]}
+    )
+
+    def brute_force_h_star(state, depth=0):
+        if problem.is_goal(state):
+            return 0.0
+        if depth >= 5:
+            return float("inf")
+        best = float("inf")
+        for act in problem.get_actions(state):
+            next_state = problem.apply_action(state, act)
+            c = problem.step_cost(state, act, next_state)
+            rem = brute_force_h_star(next_state, depth + 1)
+            if rem < float("inf"):
+                best = min(best, c + rem)
+        return best
+
+    init_state = problem.get_initial_state()
+    h_init = problem.heuristic(init_state)
+    h_star_init = brute_force_h_star(init_state)
+
+    assert h_star_init < float("inf"), "Brute force must find a valid goal"
+    assert h_init <= h_star_init + 1e-9, f"Heuristic overestimates: h={h_init} > h*={h_star_init}"
+
+    for act in problem.get_actions(init_state):
+        next_s = problem.apply_action(init_state, act)
+        h_s = problem.heuristic(next_s)
+        h_star_s = brute_force_h_star(next_s)
+        if h_star_s < float("inf"):
+            assert h_s <= h_star_s + 1e-9, f"Heuristic overestimates on intermediate state: h={h_s} > h*={h_star_s}"
+
+
+def test_heuristic_consistency_transitions(sample_jaipur_data):
+    """
+    Verify monotonicity / consistency (triangle inequality):
+    h(n) <= c(n, n') + h(n') for all transitions.
+    """
+    import random
+    problem = TravelProblem(
+        destination="Jaipur",
+        attractions=sample_jaipur_data,
+        days=2,
+        budget=20000,
+        preferences={"interests": ["historical", "food"]}
+    )
+
+    states = [problem.get_initial_state()]
+    for _ in range(50):
+        if not states:
+            break
+        current = random.choice(states)
+        actions = problem.get_actions(current)
+        if not actions:
+            states.remove(current)
+            continue
+
+        h_current = problem.heuristic(current)
+        for act in actions:
+            next_state = problem.apply_action(current, act)
+            step_c = problem.step_cost(current, act, next_state)
+            h_next = problem.heuristic(next_state)
+
+            assert h_current <= step_c + h_next + 1e-6, (
+                f"Consistency violated: h(n)={h_current} > c={step_c} + h(n')={h_next}"
+            )
+            if len(states) < 15:
+                states.append(next_state)
+
+
+def test_astar_ucs_cost_equivalence_small_instances(sample_jaipur_data):
+    """
+    A* and UCS must find solutions with identical optimal path costs on small instances.
+    """
+    problem = TravelProblem(
+        destination="Jaipur",
+        attractions=sample_jaipur_data[:5],
+        days=1,
+        budget=10000,
+        preferences={"interests": ["historical"]}
+    )
+
+    res_astar = astar(problem, max_nodes=500)
+    res_ucs = ucs(problem, max_nodes=500)
+
+    assert res_astar["solution_found"] is True
+    assert res_ucs["solution_found"] is True
+    assert abs(res_astar["path_cost"] - res_ucs["path_cost"]) < 1e-2, (
+        f"A* cost ({res_astar['path_cost']}) != UCS cost ({res_ucs['path_cost']})"
+    )
+
+
+def test_astar_expands_fewer_or_equal_nodes_than_ucs(sample_jaipur_data):
+    """
+    With an admissible and consistent heuristic, A* must expand fewer or equal
+    nodes than UCS to reach an optimal goal.
+    """
+    problem = TravelProblem(
+        destination="Jaipur",
+        attractions=sample_jaipur_data[:6],
+        days=1,
+        budget=15000,
+        preferences={"interests": ["historical", "cultural"]}
+    )
+
+    res_astar = astar(problem, max_nodes=500)
+    res_ucs = ucs(problem, max_nodes=500)
+
+    assert res_astar["solution_found"] is True
+    assert res_ucs["solution_found"] is True
+    assert res_astar["total_explored"] <= res_ucs["total_explored"], (
+        f"A* expanded more nodes ({res_astar['total_explored']}) than UCS ({res_ucs['total_explored']})"
+    )
+
+
 def test_csp_solver_with_heuristics(sample_jaipur_data):
     """Test CSP solver with MRV, Degree, LCV, and Forward Checking."""
     trip_params = {
@@ -126,6 +283,36 @@ def test_multi_agent_pipeline():
     assert "DestinationResearchAgent" in output["peas_framework"]
     assert "ItineraryPlanningAgent" in output["peas_framework"]
     assert "ConstraintValidationAgent" in output["peas_framework"]
+
+
+def test_multiday_itinerary_distinct_attractions():
+    """Verify 7-day multi-day planning produces distinct attractions without repetition."""
+    coordinator = AgentCoordinator()
+    trip_params = {
+        "destination": "jaipur",
+        "num_days": 7,
+        "budget": 35000.0,
+        "interests": ["historical", "cultural", "architecture"],
+        "walking_comfort": "moderate",
+        "search_algorithm": "astar"
+    }
+    output = coordinator.run_pipeline(trip_params)
+    days = output.get("days", [])
+    assert len(days) == 7
+
+    # Collect all scheduled attraction IDs across all 7 days
+    visited_ids = []
+    for day in days:
+        assert len(day["activities"]) > 0  # Every day must have activities scheduled
+        assert "lunch" in day["meals"] and "dinner" in day["meals"]
+        for act in day["activities"]:
+            aid = act["attraction_id"]
+            if not aid.startswith("leisure_"):
+                visited_ids.append(aid)
+
+    # Check for zero duplicates among scheduled attractions
+    assert len(visited_ids) == len(set(visited_ids)), f"Duplicate attractions detected: {visited_ids}"
+    assert len(visited_ids) >= 7, "Expected at least 7 unique attractions across 7 days"
 
 
 def test_dynamic_recovery():

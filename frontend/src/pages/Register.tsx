@@ -35,7 +35,7 @@ export const Register: React.FC = () => {
           </Link>
           <h2 className="text-2xl font-bold font-display text-navy-900">Create an Account</h2>
           <p className="text-xs text-text-secondary mt-1">
-            Sign up for intelligent constraint-based travel planning
+            Sign up for personalized, constraint-aware travel planning
           </p>
         </div>
 

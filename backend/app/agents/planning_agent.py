@@ -1,6 +1,7 @@
 """
 Itinerary Planning Agent: Formulates State Space Search problem, executes A* Search
-with admissible heuristics, and generates optimal candidate travel sequences.
+with an admissible and consistent heuristic, and generates candidate travel sequences
+optimized with respect to the defined objective cost function.
 """
 
 from typing import Dict, List, Any

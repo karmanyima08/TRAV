@@ -1,7 +1,9 @@
 """
 Search Algorithms implementation: BFS, DFS, UCS, Greedy Best-First, and A*.
-Provides full tracking of nodes, frontier, path cost, heuristic, and step-by-step
-visualization data for academic evaluation and user exploration.
+Provides tracking of nodes, frontier, path cost, heuristic, and step-by-step
+data. A* search is optimal with respect to the defined non-negative cost function
+c(step) = W_FEE*fee + W_TRANSIT*transit + W_PREF*(1-pref_norm) when using the
+admissible and consistent heuristic.
 """
 
 import time
@@ -80,14 +82,15 @@ def _state_key(state: TravelState) -> Tuple:
         state.current_time,
         state.current_location,
         tuple(sorted(state.visited_attractions)),
-        round(state.remaining_budget, -2)  # discretize budget slightly to limit state explosion
+        round(state.remaining_budget, 2),
     )
 
 
 def astar(problem: TravelProblem, max_nodes: int = 2500) -> Dict[str, Any]:
     """
     A* Search Algorithm: f(n) = g(n) + h(n).
-    Primary search algorithm for optimal constraint-guided itinerary search.
+    Guarantees optimality with respect to the defined non-negative cost function
+    c(step) because h(n) is admissible and consistent.
     """
     start_time = time.perf_counter()
     initial_state = problem.get_initial_state()
@@ -207,7 +210,11 @@ def astar(problem: TravelProblem, max_nodes: int = 2500) -> Dict[str, Any]:
 
 
 def bfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
-    """Breadth-First Search (FIFO queue, unweighted, explores level by level)."""
+    """
+    Breadth-First Search: FIFO queue exploring level by level.
+    Ignores step costs for exploration order, but tracks and reports the exact
+    objective path cost g(n) along the discovered path.
+    """
     start_time = time.perf_counter()
     initial_state = problem.get_initial_state()
 
@@ -234,8 +241,8 @@ def bfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
             "step": len(explored_nodes_log),
             "node_id": current.node_id,
             "depth": current.depth,
-            "f_cost": current.depth,
-            "g_cost": current.depth,
+            "f_cost": round(current.g_cost, 2),
+            "g_cost": round(current.g_cost, 2),
             "h_cost": 0.0,
             "state_summary": current.state.summary(),
             "is_goal": is_goal
@@ -252,12 +259,13 @@ def bfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
             next_state = problem.apply_action(current.state, act)
             next_key = _state_key(next_state)
             if next_key not in explored_states:
+                step_cost = problem.path_cost(0.0, current.state, act, next_state)
                 node_counter += 1
                 child = SearchNode(
                     state=next_state,
                     parent=current,
                     action=act,
-                    g_cost=current.g_cost + 1.0,
+                    g_cost=current.g_cost + step_cost,
                     h_cost=0.0,
                     depth=current.depth + 1,
                     node_id=node_counter
@@ -285,7 +293,11 @@ def bfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
 
 
 def dfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
-    """Depth-First Search (LIFO stack, explores deep branches first)."""
+    """
+    Depth-First Search: LIFO stack exploring deep branches first.
+    Ignores step costs for exploration order, but tracks and reports the exact
+    objective path cost g(n) along the discovered path.
+    """
     start_time = time.perf_counter()
     initial_state = problem.get_initial_state()
 
@@ -312,8 +324,8 @@ def dfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
             "step": len(explored_nodes_log),
             "node_id": current.node_id,
             "depth": current.depth,
-            "f_cost": current.depth,
-            "g_cost": current.depth,
+            "f_cost": round(current.g_cost, 2),
+            "g_cost": round(current.g_cost, 2),
             "h_cost": 0.0,
             "state_summary": current.state.summary(),
             "is_goal": is_goal
@@ -331,12 +343,13 @@ def dfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
             next_state = problem.apply_action(current.state, act)
             next_key = _state_key(next_state)
             if next_key not in explored_states:
+                step_cost = problem.path_cost(0.0, current.state, act, next_state)
                 node_counter += 1
                 child = SearchNode(
                     state=next_state,
                     parent=current,
                     action=act,
-                    g_cost=current.g_cost + 1.0,
+                    g_cost=current.g_cost + step_cost,
                     h_cost=0.0,
                     depth=current.depth + 1,
                     node_id=node_counter
@@ -364,7 +377,11 @@ def dfs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
 
 
 def ucs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
-    """Uniform Cost Search (Dijkstra): expands lowest path cost g(n) node."""
+    """
+    Uniform Cost Search (Dijkstra): expands lowest path cost g(n) node.
+    Guarantees optimality with respect to the defined non-negative cost function c(step).
+    Uses path cost g(n) only (h=0).
+    """
     start_time = time.perf_counter()
     initial_state = problem.get_initial_state()
 
@@ -445,7 +462,11 @@ def ucs(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
 
 
 def greedy_best_first(problem: TravelProblem, max_nodes: int = 1500) -> Dict[str, Any]:
-    """Greedy Best-First Search: expands node with lowest estimated cost h(n)."""
+    """
+    Greedy Best-First Search: expands node with lowest estimated cost h(n) only.
+    Fast goal-oriented search that does not guarantee cost optimality, but accumulates
+    and reports the true objective path cost g(n) for the resulting path.
+    """
     start_time = time.perf_counter()
     initial_state = problem.get_initial_state()
     h_init = problem.heuristic(initial_state)
