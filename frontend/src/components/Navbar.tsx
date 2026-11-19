@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Compass, Sparkles, Sliders, Users, MapPin, LayoutDashboard, LogOut, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
+import { Logo } from './ui/Logo';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -27,19 +28,7 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-teal flex items-center justify-center text-white shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-            <Compass className="w-6 h-6 stroke-[2.2]" />
-          </div>
-          <div>
-            <span className="font-display font-extrabold text-xl tracking-tight text-navy-900 group-hover:text-primary transition-colors">
-              TRAVORA
-            </span>
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-teal -mt-1">
-              Smart Travel Planner
-            </span>
-          </div>
-        </Link>
+        <Logo size="md" />
 
         {/* Center Nav Links */}
         <nav className="hidden md:flex items-center gap-1">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Compass, Mail, Lock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
+import { Logo } from '../components/ui/Logo';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -28,12 +29,9 @@ export const Login: React.FC = () => {
         {/* Left branding banner */}
         <div className="p-8 sm:p-12 bg-navy-900 text-white flex flex-col justify-between">
           <div>
-            <Link to="/" className="flex items-center gap-2.5 mb-10">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-teal flex items-center justify-center text-white">
-                <Compass className="w-6 h-6 stroke-[2.2]" />
-              </div>
-              <span className="font-display font-extrabold text-2xl text-white">TRAVORA</span>
-            </Link>
+            <div className="mb-10">
+              <Logo light size="lg" />
+            </div>
             <h2 className="text-2xl font-bold font-display leading-tight mb-3">
               Your Personalized Travel Workspace
             </h2>

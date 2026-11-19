@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Compass, User, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
+import { Logo } from '../components/ui/Logo';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -27,12 +28,9 @@ export const Register: React.FC = () => {
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sm:p-10">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-teal flex items-center justify-center text-white">
-              <Compass className="w-6 h-6 stroke-[2.2]" />
-            </div>
-            <span className="font-display font-extrabold text-2xl text-navy-900">TRAVORA</span>
-          </Link>
+          <div className="flex justify-center mb-4">
+            <Logo size="lg" />
+          </div>
           <h2 className="text-2xl font-bold font-display text-navy-900">Create an Account</h2>
           <p className="text-xs text-text-secondary mt-1">
             Sign up for personalized, constraint-aware travel planning
